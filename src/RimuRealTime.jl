@@ -10,7 +10,7 @@ const PACKAGE_VERSION = VersionNumber(TOML.parsefile(pkgdir(RimuRealTime, "Proje
     RimuRealTime
 `RimuRealTime` is a package for simulating many-body quantum systems in real time.
 
-Welcome to `RimuRealTime` version $PACKAGE_VERSION!
+Welcome to `RimuRealTime` version $PACKAGE_VERSION !
 """
 RimuRealTime
 
