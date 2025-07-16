@@ -14,6 +14,15 @@ Welcome to `RimuRealTime` version $PACKAGE_VERSION !
 """
 RimuRealTime
 
-# Write your package code here.
+function apply_operator(U::AbstractOperator, v::AbstractDVec)
+    step_stat_names, step_stat_values, wm, new = apply_operator!(working_memory(v), zerovector(v), v, U)
+    return new
+end
+
+include("FirstOrderTimeEvolution.jl")
+include("Exponential.jl")
+include("Clock.jl")
+
+export FirstOrderTimeEvolution, Clock, ClockAddress, FirstOrderClock, ExponentialSampler, apply_operator
 
 end
