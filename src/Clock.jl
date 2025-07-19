@@ -12,7 +12,7 @@ from Rimu.jl, the following methods should be implemented:
 """
 abstract type Clock <: AbstractHamiltonian{ComplexF64} end
 
-LOStructure(::Clock) = IsHermitian()
+Rimu.LOStructure(::Clock) = IsHermitian()
 
 """
     ClockAddress(address, t) <: AbstractFockAddress
@@ -37,7 +37,7 @@ Rimu.allows_address_type(c::Clock, a::ClockAddress) = allows_address_type(parent
 
 Rimu.starting_address(c::Clock) = ClockAddress(starting_address(parent_operator(c)), 0)
 
-Rimu.dimension(c::Clock, a) = num_steps(c)*dimension(parent_operator(c), address(a))
+Rimu.dimension(c::Clock, a) = (num_steps(c) + 1)*dimension(parent_operator(c), address(a))
 
 """
     FirstOrderClock(H, dt, length; start_at) <: Clock
@@ -53,7 +53,14 @@ struct FirstOrderClock{H<:AbstractHamiltonian} <: Clock
     length::Int
     start_at::AbstractDVec
 end
-FirstOrderClock(h, dt, length; start_at=DVec(starting_address(h) => 1.0)) = FirstOrderClock(h, dt, length, start_at)
+
+function FirstOrderClock(h, dt, length; start_at=DVec(starting_address(h) => 1.0)) 
+    if !(Rimu.LOStructure(h) == IsHermitian()) && !(Rimu.LOStructure(h) == IsDiagonal() && eltype(h) <: Real)
+        throw(ArgumentError("the Hamiltonian used with FirstOrderClock must be Hermitian"))
+    else
+        return FirstOrderClock(h, dt, length, start_at)
+    end
+end
 
 num_steps(c::FirstOrderClock) = c.length
 time_step(c::FirstOrderClock) = c.dt
@@ -102,7 +109,8 @@ function Rimu.offdiagonals(c::FirstOrderClockColumn)
     return FirstOrderClockOffdiagonals(parent_operator(c), starting_address(c), diagonal_element(c.ham_column),offdiagonals(c.ham_column), time_step(parent_operator(c)))
 end
 
-Base.IteratorSize(o::FirstOrderClockOffdiagonals) = IteratorSize(o.ods)
+Base.IteratorSize(::FirstOrderClockOffdiagonals) = Base.SizeUnknown()
+Base.eltype(::FirstOrderClockOffdiagonals{A}) where {A} = Pair{A,ComplexF64}
 
 function Base.iterate(o::FirstOrderClockOffdiagonals)
     if time_index(o.address) == 0

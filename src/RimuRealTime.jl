@@ -23,6 +23,8 @@ include("FirstOrderTimeEvolution.jl")
 include("Exponential.jl")
 include("Clock.jl")
 
-export FirstOrderTimeEvolution, Clock, ClockAddress, FirstOrderClock, ExponentialSampler, apply_operator
+export 
+    FirstOrderTimeEvolution, Clock, ClockAddress, FirstOrderClock, ExponentialSampler,
+    apply_operator, parent_operator, num_steps, time_step, starting_state, time_index, address
 
 end

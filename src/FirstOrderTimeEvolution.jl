@@ -10,9 +10,23 @@ struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: AbstractOperator{Compl
     dt::Number
 end
 
+parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
+
 Rimu.allows_address_type(u::FirstOrderTimeEvolution, add) = allows_address_type(u.hamiltonian, add)
 
 Rimu.dimension(u::FirstOrderTimeEvolution, add) = dimension(u.hamiltonian, add)
+
+function Rimu.LOStructure(::Type{<:FirstOrderTimeEvolution{H}}) where {H}
+    if Rimu.LOStructure(H) == IsDiagonal()
+        return IsDiagonal()
+    elseif Rimu.LOStructure(H) == AdjointUnknown()
+        return AdjointUnknown()
+    else
+        return AdjointKnown()
+    end
+end
+
+Rimu.adjoint(u::FirstOrderTimeEvolution) = FirstOrderTimeEvolution(parent_operator(u)', -conj(u.dt))
 
 struct FirstOrderTimeEvolutionColumn{A,U<:FirstOrderTimeEvolution,C<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,ComplexF64,U}
     op::U

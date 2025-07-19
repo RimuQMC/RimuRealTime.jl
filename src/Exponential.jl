@@ -10,7 +10,24 @@ struct ExponentialSampler{T,H<:AbstractHamiltonian} <: AbstractHamiltonian{T}
 end
 ExponentialSampler(H::AbstractHamiltonian{T}, coeff::N) where {T,N} = ExponentialSampler{promote_type(float(T),N),typeof(H)}(H,coeff)
 
+Rimu.starting_address(e::ExponentialSampler) = starting_address(e.hamiltonian)
 parent_operator(e::ExponentialSampler) = e.hamiltonian
+
+function Rimu.LOStructure(::Type{<:ExponentialSampler{T,H}}) where {T, H}
+    if Rimu.LOStructure(H) == IsDiagonal()
+        return IsDiagonal()
+    elseif Rimu.LOStructure(H) == AdjointUnknown()
+        return AdjointUnknown()
+    elseif Rimu.LOStructure(H) == IsHermitian() && T <: Real
+        return IsHermitian()
+    else
+        return AdjointKnown()
+    end
+end
+
+function Rimu.adjoint(e::ExponentialSampler)
+    return ExponentialSampler(e.hamiltonian', conj(e.coeff))
+end
 
 struct ExponentialOperatorColumn{A,T,O<:ExponentialSampler{T},C<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,T,O}
     op::O
