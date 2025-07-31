@@ -1,20 +1,4 @@
 """
-    Clock <: AbstractHamiltonian{ComplexF64}
-
-Abstract type for clock Hamiltonians. In addition to the `AbstractHamiltonian` interface
-from Rimu.jl, the following methods should be implemented:
-
- * `parent_operator(clock)` - the underlying Hamiltonian
- * `num_steps(clock)` - the number of time steps
- * `time_step(clock)` - the size of the time step
- * `starting_state(clock)` - an `AbstractDVec` in the underlying Fock space, representing
- the state of the system at ``t=0``.
-"""
-abstract type Clock <: AbstractHamiltonian{ComplexF64} end
-
-Rimu.LOStructure(::Clock) = IsHermitian()
-
-"""
     ClockAddress(address, t) <: AbstractFockAddress
 
 Address type for use with [`Clock`](@ref)s. Stores an address in the underlying Fock space,
@@ -33,185 +17,290 @@ end
 address(a::ClockAddress) = a.address
 time_index(a::ClockAddress) = a.t
 
-Rimu.allows_address_type(c::Clock, a::ClockAddress) = allows_address_type(parent_operator(c), address(a))
-
-Rimu.starting_address(c::Clock) = ClockAddress(starting_address(parent_operator(c)), 0)
-
-Rimu.dimension(c::Clock, a) = (num_steps(c) + 1)*dimension(parent_operator(c), address(a))
-
 """
-    FirstOrderClock(H, dt, length; start_at) <: Clock
+    Clock(u, length; start_at) <: AbstractHamiltonian{ComplexF64}
 
-[`Clock`](@ref) Hamiltonian using a first order approximation to the time evolution operator
-``\exp(-iHdt)``. `length` specifies the number of time steps. The optional argument
-`start_at` specifies the state of the system at ``t=0``, otherwise this defaults to
-`DVec(starting_address(H) => 1.0)`.
+Clock Hamiltonian using time evolution operator `u` with `length` time steps. The optional
+argument `start_at` specifies the state of the system at ``t=0``, otherwise this defaults
+to `DVec(starting_address(u) => 1.0)`. Information about the clock is accessed with the
+following:
+
+ * `time_evolution_operator(clock)` - the time evolution operator
+ * `num_steps(clock)` - the number of time steps
+ * `starting_state(clock)` - an `AbstractDVec` in the underlying Fock space, representing
+ the state of the system at ``t=0``.
 """
-struct FirstOrderClock{H<:AbstractHamiltonian} <: Clock
-    hamiltonian::H
-    dt::Float64
+struct Clock{U1,U2} <: AbstractHamiltonian{ComplexF64}
+    time_evolution_op::U1
+    adjoint_time_evolution_op::U2
     length::Int
     start_at::AbstractDVec
 end
 
-function FirstOrderClock(h, dt, length; start_at=DVec(starting_address(h) => 1.0)) 
-    if !(Rimu.LOStructure(h) == IsHermitian()) && !(Rimu.LOStructure(h) == IsDiagonal() && eltype(h) <: Real)
-        throw(ArgumentError("the Hamiltonian used with FirstOrderClock must be Hermitian"))
-    else
-        return FirstOrderClock(h, dt, length, start_at)
-    end
+function Clock(u, length; start_at=DVec(starting_address(u) => 1.0)) 
+    return Clock(u, u', length, start_at)
 end
 
-num_steps(c::FirstOrderClock) = c.length
-time_step(c::FirstOrderClock) = c.dt
-parent_operator(c::FirstOrderClock) = c.hamiltonian
-starting_state(c::FirstOrderClock) = c.start_at
+Rimu.allows_address_type(c::Clock, ::Type{<:ClockAddress{<:Any,<:Any,A}}) where {A} = allows_address_type(time_evolution_operator(c), A)
+Rimu.starting_address(c::Clock) = ClockAddress(starting_address(time_evolution_operator(c)), 0)
+Rimu.dimension(c::Clock, a) = (num_steps(c) + 1)*dimension(time_evolution_operator(c), address(a))
 
-struct FirstOrderClockColumn{A<:ClockAddress,O<:FirstOrderClock,C<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,ComplexF64,O}
+Rimu.LOStructure(::Clock) = IsHermitian()
+Rimu.has_iterable_offdiagonals(::Type{<:Clock{U1,U2}}) where {U1,U2} = has_iterable_offdiagonals(U1) && has_iterable_offdiagonals(U2)
+Rimu.has_random_offdiagonal(::Type{<:Clock{U1,U2}}) where {U1,U2} = has_random_offdiagonal(U1) && has_random_offdiagonal(U2)
+
+time_evolution_operator(c::Clock) = c.time_evolution_op
+num_steps(c::Clock) = c.length
+starting_state(c::Clock) = c.start_at
+
+struct ClockColumn{A<:ClockAddress,O<:Clock,C1<:AbstractOperatorColumn,C2<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,ComplexF64,O}
     clock::O
     address::A
-    ham_column::C
+    u_column::C1
+    ud_column::C2
 end
-function Rimu.operator_column(c::FirstOrderClock, a::ClockAddress)
-    return FirstOrderClockColumn(c, a, operator_column(parent_operator(c), address(a)))
+function Rimu.operator_column(c::Clock, a::ClockAddress)
+    return ClockColumn(c, a, operator_column(time_evolution_operator(c), address(a)), operator_column(c.adjoint_time_evolution_op, address(a)))
 end
 
-Rimu.starting_address(c::FirstOrderClockColumn) = c.address
-parent_operator(c::FirstOrderClockColumn) = c.clock
+Rimu.starting_address(c::ClockColumn) = c.address
+Rimu.parent_operator(c::ClockColumn) = c.clock
 
-function Rimu.num_offdiagonals(c::FirstOrderClockColumn)
-    if time_index(starting_address(c)) == 0 || time_index(starting_address(c)) == num_steps(parent_operator(c))
-        return num_offdiagonals(c.ham_column) + 1
+
+function Rimu.num_offdiagonals(c::ClockColumn)
+    if time_index(starting_address(c)) == 0
+        return num_offdiagonals(c.u_column) + 1
+    elseif time_index(starting_address(c)) == num_steps(Rimu.parent_operator(c))
+        return num_offdiagonals(c.ud_column) + 1
     else
-        return 2*(num_offdiagonals(c.ham_column) + 1)
+        return num_offdiagonals(c.u_column) + num_offdiagonals(c.ud_column) + 2
     end
 end
 
-function Rimu.diagonal_element(c::FirstOrderClockColumn)
+function Rimu.diagonal_element(c::ClockColumn)
     if time_index(starting_address(c)) == 0
-        return 1.5 - abs2(starting_state(parent_operator(c))[address(starting_address(c))])
-    elseif time_index(starting_address(c)) == num_steps(parent_operator(c))
+        return 1.5 - abs2(starting_state(Rimu.parent_operator(c))[address(starting_address(c))])
+    elseif time_index(starting_address(c)) == num_steps(Rimu.parent_operator(c))
         return 0.5
     else
         return 1
     end
 end
 
-struct FirstOrderClockOffdiagonals{A<:ClockAddress,T,OD}
-    clock::Clock
-    address::A
-    diag::T
-    ods::OD
-    dt::Float64
-end
-
-function Rimu.offdiagonals(c::FirstOrderClockColumn)
-    return FirstOrderClockOffdiagonals(parent_operator(c), starting_address(c), diagonal_element(c.ham_column),offdiagonals(c.ham_column), time_step(parent_operator(c)))
-end
-
-Base.IteratorSize(::FirstOrderClockOffdiagonals) = Base.SizeUnknown()
-Base.eltype(::FirstOrderClockOffdiagonals{A}) where {A} = Pair{A,ComplexF64}
-
-function Base.iterate(o::FirstOrderClockOffdiagonals)
-    if time_index(o.address) == 0
-        return ClockAddress(address(o.address), 1) => -0.5*(1 - im*time_step(o.clock)*o.diag), nothing
-    elseif time_index(o.address) == num_steps(o.clock)
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*(1 + im*time_step(o.clock)*o.diag), nothing
-    else
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*(1 + im*time_step(o.clock)*o.diag), (nothing, true)
+function Rimu.random_offdiagonal(c::ClockColumn)
+    num = min(100, num_offdiagonals(c.u_column))# if u is an ExponentialSampler, num_offdiagonals is infinite
+    if rand() < 1/(num + 1)# diagonal of u or u†
+        new_add = address(starting_address(c))
+        prob = 1/(num + 1)
+        if time_index(starting_address(c)) == 0
+            val = diagonal_element(c.u_column)
+            new_add = ClockAddress(new_add, 1)
+            return new_add, prob, -0.5*val
+        elseif time_index(starting_address(c)) == num_steps(Rimu.parent_operator(c))
+            val = diagonal_element(c.ud_column)
+            new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
+            return new_add, prob, -0.5*val
+        else
+            if rand() < 0.5
+                new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
+                val = diagonal_element(c.ud_column)
+                return new_add, 0.5*prob, -0.5*val
+            else
+                new_add = ClockAddress(new_add, time_index(starting_address(c)) + 1)
+                val = diagonal_element(c.u_column)
+                return new_add, 0.5*prob, -0.5*val
+            end
+        end
+    else# offdiagonal of u or u†
+        if time_index(starting_address(c)) == 0
+            new_add, prob, val = random_offdiagonal(c.u_column)
+            new_add = ClockAddress(new_add, 1)
+            prob *= num/(num + 1)
+            return new_add, prob, -0.5*val
+        elseif time_index(starting_address(c)) == num_steps(Rimu.parent_operator(c))
+            new_add, prob, val = random_offdiagonal(c.ud_column)
+            new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
+            prob *= num/(num + 1)
+            return new_add, prob, -0.5*val
+        else
+            if rand() < 0.5
+                new_add, prob, val = random_offdiagonal(c.ud_column)
+                new_add = ClockAddress(new_add, time_index(starting_address(c))- 1)
+                prob *= num/(num + 1)
+                return new_add, 0.5*prob, -0.5*val
+            else
+                new_add, prob, val = random_offdiagonal(c.u_column)
+                new_add = ClockAddress(new_add, time_index(starting_address(c)) + 1)
+                prob *= num/(num + 1)
+                return new_add, 0.5*prob, -0.5*val
+            end
+        end
     end
 end
 
-function Base.iterate(o::FirstOrderClockOffdiagonals, state)
+struct ClockOffdiagonals{A<:ClockAddress,T,OD1,OD2}
+    clock::Clock
+    address::A
+    diag_u::T
+    diag_ud::T
+    ods_u::OD1
+    ods_ud::OD2
+end
+
+function Rimu.offdiagonals(c::ClockColumn)
+    return ClockOffdiagonals(
+        Rimu.parent_operator(c), starting_address(c), diagonal_element(c.u_column), diagonal_element(c.ud_column),
+        offdiagonals(c.u_column), offdiagonals(c.ud_column))
+end
+
+Base.IteratorSize(::ClockOffdiagonals) = Base.SizeUnknown()
+Base.eltype(::ClockOffdiagonals{A}) where {A} = Pair{A,ComplexF64}
+
+function Base.iterate(o::ClockOffdiagonals)
+    if time_index(o.address) == 0
+        return ClockAddress(address(o.address), 1) => -0.5*o.diag_u, nothing
+    elseif time_index(o.address) == num_steps(o.clock)
+        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, nothing
+    else
+        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, (nothing, true)
+    end
+end
+
+function Base.iterate(o::ClockOffdiagonals, state)
     if time_index(o.address) == 0
         if isnothing(state)
-            new = iterate(o.ods)
+            new = iterate(o.ods_u)
         else
-            new = iterate(o.ods, state)
+            new = iterate(o.ods_u, state)
         end
         if isnothing(new)
             return nothing
         end
         (add, val), state = new
-        new_val = -im*val*o.dt
-        return ClockAddress(add, 1) => -0.5*new_val, state
+        return ClockAddress(add, 1) => -0.5*val, state
     elseif time_index(o.address) == num_steps(o.clock)
         if isnothing(state)
-            new = iterate(o.ods)
+            new = iterate(o.ods_ud)
         else
-            new = iterate(o.ods, state)
+            new = iterate(o.ods_ud, state)
         end
         if isnothing(new)
             return nothing
         end
         (add, val), state = new
-        new_val = im*val*o.dt
-        return ClockAddress(add, time_index(o.address) - 1) => -0.5*new_val, state
+        return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, state
     else
-        if isnothing(state[1])
-            new = iterate(o.ods)
-        else
-            new = iterate(o.ods, state[1])
-        end
         if state[2]
+            if isnothing(state[1])
+                new = iterate(o.ods_ud)
+            else
+                new = iterate(o.ods_ud, state[1])
+            end
             if isnothing(new)
-                return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*(1 - im*time_step(o.clock)*o.diag), (nothing, false)
+                return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u, (nothing, false)
             end
             (add, val), state1 = new
             state = (state1, true)
-            new_val = im*val*o.dt
-            return ClockAddress(add, time_index(o.address) - 1) => -0.5*new_val, state
+            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, state
         else
+            if isnothing(state[1])
+                new = iterate(o.ods_u)
+            else
+                new = iterate(o.ods_u, state[1])
+            end
             if isnothing(new)
                 return nothing
             end
             (add, val), state1 = new
             state = (state1, false)
-            new_val = -im*val*o.dt
-            return ClockAddress(add, time_index(o.address) + 1) => -0.5*new_val, state
+            return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, state
         end
     end
 end
 
-function Rimu.random_offdiagonal(c::FirstOrderClockColumn)
-    num = num_offdiagonals(c.ham_column)
-    if rand() < 1/(num + 1)
-        new_add = address(starting_address(c))
-        val = 1 - im*time_step(parent_operator(c))*diagonal_element(c.ham_column)
-        prob = 1/(num + 1)
-        if time_index(starting_address(c)) == 0    
-            new_add = ClockAddress(new_add, 1)
-            return new_add, prob, -0.5*val
-        elseif time_index(starting_address(c)) == num_steps(parent_operator(c))
-            new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
-            return new_add, prob, -0.5*conj(val)
-        else
-            if rand() < 0.5
-                new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
-                return new_add, 0.5*prob, -0.5*conj(val)
-            else
-                new_add = ClockAddress(new_add, time_index(starting_address(c)) + 1)
-                return new_add, 0.5*prob, -0.5*val
-            end
-        end
+"""
+    ClockOperator(op::AbstractOperator, t::Int) <: AbstractOperator
+
+Operator wrapper for use in replica strategy `AllOverlaps` with [`Clock`](@ref)
+Hamiltonians.
+"""
+struct ClockOperator{T, O<:AbstractOperator{T}} <: AbstractOperator{T}
+    op::O
+    t::Int
+end
+
+Rimu.allows_address_type(o::ClockOperator, ::Type{ClockAddress{<:Any,<:Any,A}}) where {A} = allows_address_type(o.op, A)
+
+time_index(o::ClockOperator) = o.t
+
+struct ClockOperatorColumn{A<:ClockAddress,T,O<:ClockOperator{T},C} <: AbstractOperatorColumn{A,T,O}
+    op::O
+    address::A
+    col::C
+end
+Rimu.operator_column(o::ClockOperator, a) = ClockOperatorColumn(o, a, operator_column(o.op, address(a)))
+
+Rimu.parent_operator(c::ClockOperatorColumn) = c.op
+Rimu.starting_address(c::ClockOperatorColumn) = c.address
+
+function Rimu.diagonal_element(c::ClockOperatorColumn)
+    if time_index(starting_address(c)) != time_index(Rimu.parent_operator(c))
+        return 0
     else
-        new_add, prob, val = random_offdiagonal(c.ham_column)
-        prob *= num/(num + 1)
-        val *= -im*time_step(parent_operator(c))
-        if time_index(starting_address(c)) == 0    
-            new_add = ClockAddress(new_add, 1)
-            return new_add, prob, -0.5*val
-        elseif time_index(starting_address(c)) == num_steps(parent_operator(c))
-            new_add = ClockAddress(new_add, time_index(starting_address(c)) - 1)
-            return new_add, prob, -0.5*conj(val)
-        else
-            if rand() < 0.5
-                new_add = ClockAddress(new_add, time_index(starting_address(c))- 1)
-                return new_add, 0.5*prob, -0.5*conj(val)
-            else
-                new_add = ClockAddress(new_add, time_index(starting_address(c)) + 1)
-                return new_add, 0.5*prob, -0.5*val
-            end
-        end
+        return diagonal_element(c.col)
     end
+end
+
+struct ClockOperatorOffdiagonals{O}
+    ods::O
+    t::Int
+end
+
+function Rimu.offdiagonals(c::ClockOperatorColumn)
+    return ClockOperatorOffdiagonals(offdiagonals(c.col), time_index(Rimu.parent_operator(c)))
+end
+
+function Base.iterate(o::ClockOperatorOffdiagonals)
+    first = iterate(o.ods)
+    if isnothing(first)
+        return nothing
+    end
+    (add, val), state = first
+    return ClockAddress(add, o.t) => val, state
+end
+
+function Base.iterate(o::ClockOperatorOffdiagonals, state)
+    next = iterate(o.ods, state)
+    if isnothing(next)
+        return nothing
+    end
+    (add, val), state = next
+    return ClockAddress(add, o.t) => val, state
+end
+
+"""
+    ClockProjector <: ClockOperator
+
+Operator to calculate vector-vector overlaps at time step `t`.
+"""
+function ClockProjector(t)
+    return ClockOperator(IdentityOperator(), t)
+end
+
+"""
+    ClockObservable(op::AbstractObservable, t::Int) <: AbstractObservable
+
+Observable for use in replica strategy AllOverlaps with Clock Hamiltonians.
+"""
+struct ClockObservable{T, O} <: AbstractObservable{T}
+    op::O
+    t::Int
+end
+
+ClockObservable(o::AbstractOperator, t) = ClockOperator(o, t)
+
+function Rimu.Interfaces.dot_from_right(x, obs::ClockObservable, y)
+    xt = DVec(address(add) => val for (add, val) in pairs(x) if time_index(add) == o.t)
+    yt = DVec(address(add) => val for (add, val) in pairs(y) if time_index(add) == o.t)
+    return dot(xt, obs.op, yt)
 end

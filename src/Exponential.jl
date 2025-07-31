@@ -29,6 +29,8 @@ function Rimu.adjoint(e::ExponentialSampler)
     return ExponentialSampler(e.hamiltonian', conj(e.coeff))
 end
 
+Rimu.has_iterable_offdiagonals(::Type{<:ExponentialSampler}) = false
+
 struct ExponentialOperatorColumn{A,T,O<:ExponentialSampler{T},C<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,T,O}
     op::O
     address::A

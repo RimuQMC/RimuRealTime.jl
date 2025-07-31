@@ -19,12 +19,14 @@ function apply_operator(U::AbstractOperator, v::AbstractDVec)
     return new
 end
 
-include("FirstOrderTimeEvolution.jl")
+include("TimeEvolutionOperators.jl")
 include("Exponential.jl")
 include("Clock.jl")
 
-export 
-    FirstOrderTimeEvolution, Clock, ClockAddress, FirstOrderClock, ExponentialSampler,
-    apply_operator, parent_operator, num_steps, time_step, starting_state, time_index, address
+export apply_operator
+export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
+export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time_index
+export address, num_steps, time_evolution_operator, starting_state, time_step
+
 
 end

@@ -2,17 +2,19 @@
     FirstOrderTimeEvolution(H::AbstractHamiltonian, dt) <: AbstractOperator{ComplexF64}
 
 Time evolution operator that approximates time evolution under a Hamiltonian `H` as
-``\exp(-iHdt) \approx 1 - iHdt``. Apply to an `AbstractDVec` using `apply_operator` to
+``\\exp(-iHdt) \\approx 1 - iHdt``. Apply to an `AbstractDVec` using `apply_operator` to
 evolve the state.
 """
-struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: AbstractOperator{ComplexF64}
+struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: AbstractHamiltonian{ComplexF64}
     hamiltonian::H
     dt::Number
 end
 
+Rimu.starting_address(u::FirstOrderTimeEvolution) = starting_address(u.hamiltonian)
+
 parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
 
-Rimu.allows_address_type(u::FirstOrderTimeEvolution, add) = allows_address_type(u.hamiltonian, add)
+Rimu.allows_address_type(u::FirstOrderTimeEvolution, ::Type{A}) where {A} = allows_address_type(u.hamiltonian, A)
 
 Rimu.dimension(u::FirstOrderTimeEvolution, add) = dimension(u.hamiltonian, add)
 
@@ -36,6 +38,7 @@ struct FirstOrderTimeEvolutionColumn{A,U<:FirstOrderTimeEvolution,C<:AbstractOpe
 end
 Rimu.operator_column(u::FirstOrderTimeEvolution, add) = FirstOrderTimeEvolutionColumn(u, add, operator_column(u.hamiltonian, add), u.dt)
 
+Rimu.parent_operator(c::FirstOrderTimeEvolutionColumn) = c.op
 Rimu.starting_address(c::FirstOrderTimeEvolutionColumn) = c.address
 Rimu.diagonal_element(c::FirstOrderTimeEvolutionColumn) = 1 - im*c.dt*diagonal_element(c.ham_column)
 Rimu.num_offdiagonals(c::FirstOrderTimeEvolutionColumn) = num_offdiagonals(c.ham_column)
@@ -69,4 +72,32 @@ function Base.iterate(o::FOTEOffdiagonals, state)
     (add, val), state = new
     new_val = -im*val*o.dt
     return add => new_val, state
+end
+
+"""
+    NthOrderTimeEvolution(H::AbstractHamiltonian, dt, N) <: AbstractOperator{ComplexF64}
+
+Time evolution operator that approximates time evolution under a Hamiltonian `H` as
+the `N`th order Taylor expansion of``\\exp(-iHdt)``. Apply to an `AbstractDVec` using
+`apply_operator` to evolve the state. If `N == -1`, returns an
+[`ExponentialSampler`](@ref), so the vector must not use exact spawning.
+"""
+function NthOrderTimeEvolution(H::AbstractHamiltonian, dt::Number, N::Int)
+    if N == 0
+        return IdentityOperator()
+    elseif N == -1
+        return ExponentialSampler(H, -im*dt)
+    else
+        op = FirstOrderTimeEvolution(H, dt)
+        prod = H
+        factor = 1
+        count = 1
+        while count < N
+            count += 1
+            prod = H*prod
+            factor /= count
+            op = HamiltonianSum(op, prod; a=1, b=factor*(-im*dt)^count, weight=count-1)# equal weighting for each term
+        end
+        return op
+    end
 end
