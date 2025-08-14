@@ -6,9 +6,12 @@ offdiagonals, so exact spawning is not possible.
 """
 struct ExponentialSampler{T,H<:AbstractHamiltonian} <: AbstractHamiltonian{T}
     hamiltonian::H
-    coeff::Number
+    coeff::T
 end
-ExponentialSampler(H::AbstractHamiltonian{T}, coeff::N) where {T,N} = ExponentialSampler{promote_type(float(T),N),typeof(H)}(H,coeff)
+function ExponentialSampler(h::AbstractHamiltonian{T}, coeff::N) where {T,N}
+    S = promote_type(float(T),N)
+    return ExponentialSampler{S,typeof(h)}(h,S(coeff))
+end
 
 Rimu.starting_address(e::ExponentialSampler) = starting_address(e.hamiltonian)
 parent_operator(e::ExponentialSampler) = e.hamiltonian
@@ -36,7 +39,7 @@ struct ExponentialOperatorColumn{A,T,O<:ExponentialSampler{T},C<:AbstractOperato
     address::A
     ham_column::C
     diag::T
-    coeff::Number
+    coeff::T
 end
 
 function Rimu.operator_column(e::ExponentialSampler{T}, add) where {T}
@@ -44,6 +47,7 @@ function Rimu.operator_column(e::ExponentialSampler{T}, add) where {T}
     return ExponentialOperatorColumn(e, add, col, T(diagonal_element(col)), e.coeff)
 end
 
+Rimu.parent_operator(c::ExponentialOperatorColumn) = c.op
 Rimu.starting_address(c::ExponentialOperatorColumn) = c.address
 Rimu.num_offdiagonals(::ExponentialOperatorColumn) = Inf
 Rimu.diagonal_element(::ExponentialOperatorColumn{<:Any, T}) where {T} = T(1)

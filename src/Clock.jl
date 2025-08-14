@@ -35,10 +35,11 @@ struct Clock{U1,U2} <: AbstractHamiltonian{ComplexF64}
     adjoint_time_evolution_op::U2
     length::Int
     start_at::AbstractDVec
+    penalty::Float64
 end
 
-function Clock(u, length; start_at=DVec(starting_address(u) => 1.0)) 
-    return Clock(u, u', length, start_at)
+function Clock(u, length; start_at=DVec(starting_address(u) => 1.0), penalty=1.0) 
+    return Clock(u, u', length, start_at, penalty)
 end
 
 Rimu.allows_address_type(c::Clock, ::Type{<:ClockAddress{<:Any,<:Any,A}}) where {A} = allows_address_type(time_evolution_operator(c), A)
@@ -79,7 +80,7 @@ end
 
 function Rimu.diagonal_element(c::ClockColumn)
     if time_index(starting_address(c)) == 0
-        return 1.5 - abs2(starting_state(Rimu.parent_operator(c))[address(starting_address(c))])
+        return 0.5 + c.clock.penalty*(1 - abs2(starting_state(Rimu.parent_operator(c))[address(starting_address(c))]))
     elseif time_index(starting_address(c)) == num_steps(Rimu.parent_operator(c))
         return 0.5
     else
@@ -149,71 +150,95 @@ end
 
 function Rimu.offdiagonals(c::ClockColumn)
     return ClockOffdiagonals(
-        Rimu.parent_operator(c), starting_address(c), diagonal_element(c.u_column), diagonal_element(c.ud_column),
-        offdiagonals(c.u_column), offdiagonals(c.ud_column))
+        Rimu.parent_operator(c), starting_address(c), diagonal_element(c.u_column),
+        diagonal_element(c.ud_column), offdiagonals(c.u_column), offdiagonals(c.ud_column))
 end
 
 Base.IteratorSize(::ClockOffdiagonals) = Base.SizeUnknown()
 Base.eltype(::ClockOffdiagonals{A}) where {A} = Pair{A,ComplexF64}
 
+struct ClockIterState{S1}
+    s::Union{S1,Nothing}
+    decreasing::Bool
+end
+
 function Base.iterate(o::ClockOffdiagonals)
     if time_index(o.address) == 0
-        return ClockAddress(address(o.address), 1) => -0.5*o.diag_u, nothing
+        return ClockAddress(address(o.address), 1) => -0.5*o.diag_u, ClockIterState{Nothing}(nothing, false)
     elseif time_index(o.address) == num_steps(o.clock)
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, nothing
+        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, ClockIterState{Nothing}(nothing, true)
     else
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, (nothing, true)
+        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud, ClockIterState{Nothing}(nothing, true)
     end
 end
 
-function Base.iterate(o::ClockOffdiagonals, state)
+function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1}
     if time_index(o.address) == 0
-        if isnothing(state)
+        if isnothing(state.s)
             new = iterate(o.ods_u)
-        else
-            new = iterate(o.ods_u, state)
-        end
-        if isnothing(new)
-            return nothing
-        end
-        (add, val), state = new
-        return ClockAddress(add, 1) => -0.5*val, state
-    elseif time_index(o.address) == num_steps(o.clock)
-        if isnothing(state)
-            new = iterate(o.ods_ud)
-        else
-            new = iterate(o.ods_ud, state)
-        end
-        if isnothing(new)
-            return nothing
-        end
-        (add, val), state = new
-        return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, state
-    else
-        if state[2]
-            if isnothing(state[1])
-                new = iterate(o.ods_ud)
-            else
-                new = iterate(o.ods_ud, state[1])
-            end
-            if isnothing(new)
-                return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u, (nothing, false)
-            end
-            (add, val), state1 = new
-            state = (state1, true)
-            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, state
-        else
-            if isnothing(state[1])
-                new = iterate(o.ods_u)
-            else
-                new = iterate(o.ods_u, state[1])
-            end
             if isnothing(new)
                 return nothing
             end
             (add, val), state1 = new
-            state = (state1, false)
-            return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, state
+            return ClockAddress(add, 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, false)
+        else
+            new = iterate(o.ods_u, state.s)
+            if isnothing(new)
+                return nothing
+            end
+            (add, val), state1 = new
+            return ClockAddress(add, 1) => -0.5*val, ClockIterState{S1}(state1, false)
+        end
+    elseif time_index(o.address) == num_steps(o.clock)
+        if isnothing(state.s)
+            new = iterate(o.ods_ud)
+            if isnothing(new)
+                return nothing
+            end
+            (add, val), state1 = new
+            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, true)
+        else
+            new = iterate(o.ods_ud, state.s)
+            if isnothing(new)
+                return nothing
+            end
+            (add, val), state1 = new
+            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{S1}(state1, true)
+        end
+    else
+        if state.decreasing
+            if isnothing(state.s)
+                new = iterate(o.ods_ud)
+                if isnothing(new)
+                    return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u, ClockIterState{Nothing}(nothing, false)
+                end
+                (add, val), state1 = new
+                return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, true)
+            else
+                new = iterate(o.ods_ud, state.s)
+                if isnothing(new)
+                    return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u, ClockIterState{Nothing}(nothing, false)
+                end
+                (add, val), state1 = new
+                return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{S1}(state1, true)
+            end
+        else
+            if isnothing(state.s)
+                new = iterate(o.ods_u)
+                if isnothing(new)
+                    return nothing
+                end
+                (add, val), state1 = new
+                return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, false)
+            else
+                new = iterate(o.ods_u, state.s)
+                if isnothing(new)
+                    return nothing
+                end
+                (add, val), state1 = new
+                return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, ClockIterState{S1}(state1, false)
+            end
+            
         end
     end
 end
