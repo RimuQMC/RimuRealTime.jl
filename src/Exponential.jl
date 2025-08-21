@@ -8,8 +8,8 @@ struct ExponentialSampler{T,H<:AbstractHamiltonian} <: AbstractHamiltonian{T}
     hamiltonian::H
     coeff::T
 end
-function ExponentialSampler(h::AbstractHamiltonian{T}, coeff::N) where {T,N}
-    S = promote_type(float(T),N)
+function ExponentialSampler(h::AbstractHamiltonian{T}, coeff::Number) where {T}
+    S = promote_type(float(T),typeof(coeff))
     return ExponentialSampler{S,typeof(h)}(h,S(coeff))
 end
 

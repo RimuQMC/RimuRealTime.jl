@@ -48,7 +48,7 @@ function NthOrderTimeEvolution(H::AbstractHamiltonian, dt::Float64, N::Int)
             count += 1
             prod = H*prod
             factor /= count
-            op = HamiltonianSum(op, (factor*(-im*dt)^count)*prod; weight = count - 1)
+            op = HamiltonianSum(op, (factor*(-im*dt)^count)*prod; weight = (count - 1)/count)
         end
         return op
     end
