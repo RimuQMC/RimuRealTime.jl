@@ -10,9 +10,11 @@ struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: ModifiedHamiltonian{Co
     dt::Float64
 end
 
-Rimu.parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
-Rimu.modify_diagonal(u::FirstOrderTimeEvolution, _, value) = 1 - im*u.dt*value
-Rimu.modify_offdiagonal(u::FirstOrderTimeEvolution, _, addr, value) = addr => -im*u.dt*value
+Rimu.Interfaces.parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
+Rimu.Hamiltonians.modify_diagonal(u::FirstOrderTimeEvolution, _, value) = 1 - im*u.dt*value
+function Rimu.Hamiltonians.modify_offdiagonal(u::FirstOrderTimeEvolution, _, addr, value)
+    addr => -im*u.dt*value
+end
 
 function Rimu.LOStructure(::Type{<:FirstOrderTimeEvolution{H}}) where {H}
     if Rimu.LOStructure(H) == IsDiagonal()

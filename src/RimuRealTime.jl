@@ -1,6 +1,7 @@
 module RimuRealTime
 
 using Rimu
+using Rimu.Hamiltonians: ModifiedHamiltonian
 import TOML
 
 const PACKAGE_NAME = "RimuRealTime"
