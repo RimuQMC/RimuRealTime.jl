@@ -17,6 +17,14 @@ end
 address(a::ClockAddress) = a.address
 time_index(a::ClockAddress) = a.t
 
+function Base.isless(a::ClockAddress, b::ClockAddress)
+    if time_index(a) == time_index(b)
+        return address(a) < address(b)
+    else
+        return time_index(a) < time_index(b)
+    end
+end
+
 """
     Clock(u, length; start_at, penalty=1.0) <: AbstractHamiltonian{ComplexF64}
 

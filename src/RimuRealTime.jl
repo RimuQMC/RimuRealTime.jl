@@ -29,11 +29,13 @@ end
 include("TimeEvolutionOperators.jl")
 include("Exponential.jl")
 include("Clock.jl")
+include("fSim.jl")
 
 export apply_operator
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time_index
 export address, num_steps, time_evolution_operator, starting_state, time_step
+export fSim
 
 
 end
