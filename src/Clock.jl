@@ -189,7 +189,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
                 return nothing
             end
             (add, val), state1 = new
-            return ClockAddress(add, 1) => -0.5*val, ClockIterState{S1}(state1, false)
+            return ClockAddress(add, 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, false)
         end
     elseif time_index(o.address) == num_steps(o.clock)
         if isnothing(state.s)
@@ -205,7 +205,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
                 return nothing
             end
             (add, val), state1 = new
-            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{S1}(state1, true)
+            return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, true)
         end
     else
         if state.decreasing
@@ -222,7 +222,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
                     return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u, ClockIterState{Nothing}(nothing, false)
                 end
                 (add, val), state1 = new
-                return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{S1}(state1, true)
+                return ClockAddress(add, time_index(o.address) - 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, true)
             end
         else
             if isnothing(state.s)
@@ -238,7 +238,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
                     return nothing
                 end
                 (add, val), state1 = new
-                return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, ClockIterState{S1}(state1, false)
+                return ClockAddress(add, time_index(o.address) + 1) => -0.5*val, ClockIterState{typeof(state1)}(state1, false)
             end
             
         end
