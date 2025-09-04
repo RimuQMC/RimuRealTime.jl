@@ -28,8 +28,8 @@ function Rimu.LOStructure(::Type{<:ExponentialSampler{T,H}}) where {T, H}
     end
 end
 
-function Rimu.adjoint(e::ExponentialSampler)
-    return ExponentialSampler(e.hamiltonian', conj(e.coeff))
+function Rimu.adjoint(e::ExponentialSampler{T}) where {T}
+    return ExponentialSampler(e.hamiltonian', T(conj(e.coeff)+0.0im))
 end
 
 Rimu.has_iterable_offdiagonals(::Type{<:ExponentialSampler}) = false

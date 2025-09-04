@@ -14,8 +14,14 @@ Welcome to `RimuRealTime` version $PACKAGE_VERSION !
 """
 RimuRealTime
 
+"""
+    apply_operator(U::AbstractOperator, v::AbstractDVec) -> AbstractDVec
+
+Non-mutating version of Rimu.apply_operator!, computing the product `Uv` and returning
+the resulting vector.
+"""
 function apply_operator(U::AbstractOperator, v::AbstractDVec)
-    step_stat_names, step_stat_values, wm, new = apply_operator!(working_memory(v), zerovector(v), v, U)
+    n, v, wm, new = apply_operator!(working_memory(v), zerovector(v), v, U)
     return new
 end
 

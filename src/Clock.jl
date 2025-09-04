@@ -18,12 +18,14 @@ address(a::ClockAddress) = a.address
 time_index(a::ClockAddress) = a.t
 
 """
-    Clock(u, length; start_at) <: AbstractHamiltonian{ComplexF64}
+    Clock(u, length; start_at, penalty=1.0) <: AbstractHamiltonian{ComplexF64}
 
 Clock Hamiltonian using time evolution operator `u` with `length` time steps. The optional
 argument `start_at` specifies the state of the system at ``t=0``, otherwise this defaults
-to `DVec(starting_address(u) => 1.0)`. Information about the clock is accessed with the
-following:
+to `DVec(starting_address(u) => 1.0)`. `penalty` is the size of the multiplier on the
+``t=0`` diagonal element that forces the initial state to remain as `start_at`.
+
+Information about the clock is accessed with the following:
 
  * `time_evolution_operator(clock)` - the time evolution operator
  * `num_steps(clock)` - the number of time steps
