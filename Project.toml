@@ -8,7 +8,7 @@ Rimu = "c53c40cc-bd84-11e9-2cf4-a9fde2b9386e"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
-Rimu = "0.14.1"
+Rimu = "0.14.0, 0.15"
 TOML = "1.0.3"
 julia = "1.9"
 
