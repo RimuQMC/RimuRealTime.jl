@@ -1,7 +1,13 @@
 module RimuRealTime
 
+using Arrow: Arrow
+using OrderedCollections: OrderedCollections, LittleDict
+using Parameters: Parameters, @pack!, @unpack, @with_kw
+using ProgressLogging: ProgressLogging, @logprogress, @withprogress
+using Random: Random, RandomDevice, seed!
 using Rimu
 using Rimu.Hamiltonians: ModifiedHamiltonian
+using Setfield: Setfield, @set
 import TOML
 
 const PACKAGE_NAME = "RimuRealTime"
@@ -29,10 +35,16 @@ end
 include("TimeEvolutionOperators.jl")
 include("Exponential.jl")
 include("Clock.jl")
+include("strategies_and_params.jl")
+include("quantum_dynamics_problem.jl")
+include("qmc_states.jl")
+include("fciqmc.jl")
+include("qd_simulation.jl")
 
 export apply_operator
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time_index
 export address, num_steps, time_evolution_operator, starting_state, time_step
+export CFCIQMC, WalkerControl, QuantumDynamicsProblem, PEC
 
 end
