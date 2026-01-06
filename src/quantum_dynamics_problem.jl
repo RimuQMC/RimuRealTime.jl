@@ -14,7 +14,7 @@ See [`QuantumDynamicsProblem`](@ref), [`QDSimulation`](@ref).
 """
 Base.@kwdef struct QDSimulationPlan
     starting_step::Int = 0
-    last_step::Int = 100
+    last_step::Float64 = Inf
     wall_time::Float64 = Inf
     maximum_time::Float64 = 1.0
 end
@@ -31,10 +31,10 @@ end
 Defines a problem for time evolution under the given `hamiltonian`.
 
 #Keyword arguments:
-- `time_step = 0.01`: Size of time step. For complex time steps, this is the modulus; use
-    keyword `alpha` to define the argument.
-- `last_step = 100`: Number of time steps.
-- `maximum_time = 1.0`: How long to evolve for in real time.
+- `time_step = 0.01`: Size of the time step. For complex time steps, this is the modulus;
+    use keyword `alpha` to define the argument.
+- `maximum_time = 1.0`: How long to evolve for in real time. Alternatively, set `last_step`
+    to limit the number of time steps.
 - `shift = 0.0`: Energy shift applied to the Hamiltonian. The state evolves under
     `H - shift*I`.
 - `initial_walkers = 1000`: Initial walker population.
@@ -46,12 +46,12 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `threading`: Default is to use multithreading and/or
     [MPI](https://juliaparallel.org/MPI.jl/latest/) if available. Set to
     `true` to force PDVec for the starting vector, `false` for serial computation;
-  may be overridden by `start_at`.
+    may be overridden by `start_at`.
 - `evolution_strategy = PEC()`: Strategy for time evolution, see
-    [`EvolutionStrategy`](@ref)
+    [`EvolutionStrategy`](@ref).
 - `n_replicas = 1`: Number of synchronised independent simulations.
 - `replica_strategy = NoStats(n_replicas)`: Which results to report from replica
-    simulations, see Rimu.ReplicaStrategy.
+    simulations. See Rimu.ReplicaStrategy.
 - `reporting_strategy = ReportDFAndInfo()`: How and when to report results, see
     [`ReportingStrategy`](@ref).
 - `post_step_strategy = ()`: Extract observables (e.g. Rimu.ProjectedEnergy), see
@@ -125,12 +125,12 @@ function QuantumDynamicsProblem(
     threading = nothing,
     time_step = 0.01,
     starting_step = 0,
-    last_step = 100,
+    last_step = Inf,
     maximum_time = 1.0,
     wall_time = Inf,
     simulation_plan = nothing,
     replica_strategy = NoStats(n_replicas),
-    initial_walkers = 1000,
+    initial_walkers = 1000.0,
     D = 0.1,
     alpha=0.0,
     time_step_strategy=ConstantTimeStep(),
@@ -184,9 +184,9 @@ function QuantumDynamicsProblem(
         post_step_strategy = (post_step_strategy,)
     end
 
-    if start_at isa AbstractDVec && valtype(start_at) <: Real
+    if start_at isa AbstractDVec && valtype(start_at) <: Real || eltype(style) <: Real
         throw(ArgumentError(
-            "The starting vector provided must allow complex values."
+            "The starting vector or stochastic style provided must allow complex values."
         ))
     end
 

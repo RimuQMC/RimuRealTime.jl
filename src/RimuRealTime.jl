@@ -6,6 +6,7 @@ using Parameters: Parameters, @pack!, @unpack, @with_kw
 using ProgressLogging: ProgressLogging, @logprogress, @withprogress
 using Random: Random, RandomDevice, seed!
 using Rimu
+import Rimu: num_replicas
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
 import TOML
@@ -45,6 +46,7 @@ export apply_operator
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time_index
 export address, num_steps, time_evolution_operator, starting_state, time_step
-export CFCIQMC, WalkerControl, QuantumDynamicsProblem, PEC
+export CFCIQMC, WalkerControl, QuantumDynamicsProblem, PEC, Runge_Kutta, Euler, Product
+export ReportingStrategy, ReportDFAndInfo, ReportToFile, num_replicas, QDSimulationPlan
 
 end

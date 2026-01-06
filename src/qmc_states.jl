@@ -1,11 +1,22 @@
 """
     QDSingleState
-Abstract type for single states.
+Abstract type for single states, with different [`EvolutionStrategy`](@ref)s.
+
+##Concrete types:
+
+* [`PECSingleState`](@ref)
+* [`RKSingleState`](@ref)
+* [`EulerSingleState`](@ref)
+* [`ProductSingleState`](@ref)
 """
 abstract type QDSingleState end
 
+#required for AllOverlaps to work
+Rimu.num_spectral_states(::QDSingleState) = 1
+Base.getindex(s::QDSingleState, _) = s
+
 """
-    PECSingleState(v, id) <: QDSingleState
+    PECSingleState(v, working_memory, id, hamiltonian, shift) <: QDSingleState
 Struct holding state vector and other vectors required for [`PEC`](@ref) time evolution.
 See [`QDReplicaState`](@ref).
 """
@@ -19,28 +30,82 @@ mutable struct PECSingleState{V,W} <: QDSingleState
     id::String
 end
 
+function PECSingleState(v, wm, id, hamiltonian, shift)
+    vec = deepcopy(v)
+    w = zerovector(v)
+    Hw = apply_operator(hamiltonian, v) - shift*v
+    Hw_new = zerovector(v)
+    x = zerovector(v)
+    wm = wm isa PDWorkingMemory ? wm : working_memory(v)
+    return PECSingleState(vec,w,Hw,Hw_new,x,wm,id)
+end
+
 """
-    RKSingleState(v, id) <: QDSingleState
+    RKSingleState(v, wm, id, hamiltonian, time_step) <: QDSingleState
 Struct holding state vector and other vectors required for [`Runge_Kutta`](@ref) time
 evolution. See [`QDReplicaState`](@ref).
 """
-mutable struct RKSingleState <: QDSingleState end
-
-"""
-    EulerSingleState(v, id) <: QDSingleState
-Struct holding state vector and other vectors required for [`Euler`](@ref) time evolution.
-See [`QDReplicaState`](@ref).
-"""
-mutable struct EulerSingleState{V,W} <: QDSingleState
+mutable struct RKSingleState{V,W,U} <: QDSingleState
     v::V
-    pv::V
+    w::V
+    x::V
     wm::W
+    u1::U
+    u2::U
     id::String
 end
 
-#required for AllOverlaps to work
-Rimu.num_spectral_states(::QDSingleState) = 1
-Base.getindex(s::QDSingleState, _) = s
+function RKSingleState(v, wm, id, hamiltonian, time_step)
+    vec = deepcopy(v)
+    w = zerovector(v)
+    x = zerovector(v)
+    wm = wm isa PDWorkingMemory ? wm : working_memory(v)
+    u1 = FirstOrderTimeEvolution(hamiltonian, time_step)
+    u2 = FirstOrderTimeEvolution(hamiltonian, time_step/2)
+    return RKSingleState(vec, w, x, wm, u1, u2, id)
+end
+
+"""
+    EulerSingleState(v, wm, id, hamiltonian, time_step) <: QDSingleState
+Struct holding state vector and other vectors required for [`Euler`](@ref) time evolution.
+See [`QDReplicaState`](@ref).
+"""
+mutable struct EulerSingleState{V,W,U} <: QDSingleState
+    v::V
+    pv::V
+    wm::W
+    u::U
+    id::String
+end
+
+function EulerSingleState(v, wm, id, hamiltonian, time_step)
+    vec = deepcopy(v)
+    pv = zerovector(v)
+    wm = wm isa PDWorkingMemory ? wm : working_memory(v)
+    u = FirstOrderTimeEvolution(hamiltonian, time_step)
+    return EulerSingleState(vec, pv, wm, u, id)
+end
+
+"""
+    ProductSingleState() <: QDSingleState
+Struct holding state vector and other vectors required for [`Product`](@ref) time evolution.
+See [`QDReplicaState`](@ref).
+"""
+mutable struct ProductSingleState{V,W,U} <: QDSingleState
+    v::V
+    pv::V
+    wm::W
+    u::U
+    id::String
+end
+
+function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
+    vec = deepcopy(v)
+    pv = zerovector(v)
+    wm = wm isa PDWorkingMemory ? wm : working_memory(v)
+    u = NthOrderTimeEvolution(hamiltonian, time_step, order)
+    return ProductSingleState(vec, pv, wm, u, id)
+end
 
 """
     QDReplicaState <: AbstractVector{QDSingleState}
@@ -63,6 +128,7 @@ struct QDReplicaState{
     RRS<:ReplicaStrategy,
     H,
     A,
+    TS<:TimeStepStrategy,
     RS<:ReportingStrategy,
     PS<:NTuple{<:Any,PostStepStrategy}
 } <: AbstractVector{QDSingleState}
@@ -73,6 +139,7 @@ struct QDReplicaState{
     algorithm::A
     step::Ref{Int}
     simulation_plan::QDSimulationPlan
+    time_step_strategy::TS
     reporting_strategy::RS
     post_step_strategy::PS
     replica_strategy::RRS

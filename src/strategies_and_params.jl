@@ -6,27 +6,46 @@ Abstract type for time evolution strategies. Passed as a parameter to
 ##Implemented strategies:
 
 * [`PEC`](@ref)
+* [`Runge_Kutta`](@ref)
+* [`Euler`](@ref)
+* [`Product`](@ref)
 """
 abstract type EvolutionStrategy end
 
 """
     PEC() <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using a second order predict-evaluate-correct
-algorithm. This requires only one application of the Hamiltonian per time step.
+algorithm. This requires only one application of the Hamiltonian per time step. The state
+updated every time step according to ``v_{n+1} = v_n - i \frac{dt}{2}(x_n + x_{n+1})``,
+where ``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is
+initialized as ``x_0 = H v_0``.
 """
 struct PEC <: EvolutionStrategy end
 
 """
     Runge_Kutta() <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using a second order Runge-Kutta algorithm.
+[`EvolutionStrategy`](@ref) for evolution using a second order Runge-Kutta algorithm. In
+each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
+where ``u1 = 1 - i H dt`` and ``u2 = 1 - i H dt / 2``.
 """
 struct Runge_Kutta <: EvolutionStrategy end
 
 """
     Euler() <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using the first order Euler method.
+[`EvolutionStrategy`](@ref) for evolution using the first order Euler method. In each step
+the state is updated according to ``v_{n+1} = (1 - i H dt)v_n``.
 """
 struct Euler <: EvolutionStrategy end
+
+"""
+    Product(n) <: EvolutionStrategy
+[`EvolutionStrategy`](@ref) for evolution using an `n`th order expansion of the exponential
+time evolution operator ``\\exp(-i H dt)``, where powers of the Hamiltonian are applied
+using Rimu.HamiltonianProduct. This strategy does not support adding an energy shift.
+"""
+struct Product <: EvolutionStrategy
+    order::Int
+end
 
 """
     TimeStepParameters

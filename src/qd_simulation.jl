@@ -29,25 +29,6 @@ mutable struct QDSimulation
     elapsed_time::Float64
 end
 
-function _set_up_starting_vectors(algorithm, hamiltonian, shift, v, wm, id)
-    if algorithm.evolution_strategy isa PEC
-        vec = deepcopy(v)
-        w = deepcopy(v)
-        Hw = apply_operator(hamiltonian, deepcopy(v)) - shift*v
-        Hw_new = deepcopy(v)
-        x = deepcopy(v)
-        wm = wm isa PDWorkingMemory ? wm : working_memory(v)
-        return PECSingleState(vec,w,Hw,Hw_new,x,wm,id)
-    elseif algorithm.evolution_strategy isa Euler
-        vec = deepcopy(v)
-        pv = deepcopy(v)
-        wm = wm isa PDWorkingMemory ? wm : working_memory(v)
-        return EulerSingleState(vec, pv, wm, id)
-    else
-        throw(ArgumentError("Strategy not implemented"))
-    end
-end
-
 function QDSimulation(problem::QuantumDynamicsProblem)
 
     @unpack algorithm, hamiltonian, start_at, style, threading, simulation_plan,
@@ -90,7 +71,15 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         else
             "_r$(i)"
         end
-        _set_up_starting_vectors(algorithm, hamiltonian, shift, v, wm, id)
+        if algorithm.evolution_strategy isa PEC
+            PECSingleState(v, wm, id, hamiltonian, shift)
+        elseif algorithm.evolution_strategy isa Runge_Kutta
+            RKSingleState(v, wm, id, hamiltonian, time_step)
+        elseif algorithm.evolution_strategy isa Euler
+            EulerSingleState(v, wm, id, hamiltonian, time_step)
+        elseif algorithm.evolution_strategy isa Product
+            ProductSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.order)
+        end
     end
     @assert single_states isa NTuple{n_replicas, <:QDSingleState}
 
@@ -102,6 +91,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         algorithm,
         Ref(simulation_plan.starting_step),
         simulation_plan,
+        algorithm.time_step_strategy,
         reporting_strategy,
         post_step_strategy,
         replica_strategy
@@ -219,7 +209,7 @@ function CommonSolve.step!(sm::QDSimulation)
         return sm
     end
     @unpack time = time_step_stats
-    if step[] == simulation_plan.last_step || real(time) >= simulation_plan.maximum_time
+    if step[] >= simulation_plan.last_step || real(time) >= simulation_plan.maximum_time
         sm.success = true
     end
     return sm
@@ -228,8 +218,8 @@ end
 """
     solve(::QuantumDynamicsProblem)::QDSimulation
 
-Initialize and solve a [`QuantumDynamicsProblem`](@ref) until the last step is completed
-or the wall time limit is reached.
+Initialize and solve a [`QuantumDynamicsProblem`](@ref) until the maximum time is reached,
+the last step is completed, or the wall time limit is reached.
 
 See also [`init`](@ref), [`solve!`](@ref), [`step!`](@ref), [`QDSimulation`](@ref).
 """
@@ -238,14 +228,16 @@ CommonSolve.solve
 """
     solve!(sm::QDSimulation; kwargs...)::QDSimulation
 
-Solve a [`QDSimulation`](@ref) until the last step is completed or the wall time limit
-is reached.
+Solve a [`QDSimulation`](@ref) until the maximum time is reached, the last step is
+completed, or the wall time limit is reached.
 
-To continue a previously completed simulation, set a new `last_step` or `wall_time` using
-the keyword arguments. Optionally, changes can be made to the `replica_strategy`, the
-`post_step_strategy`, or the `reporting_strategy`.
+To continue a previously completed simulation, set a new `maximum_time`, `last_step`, or
+`wall_time` using the keyword arguments. Optionally, changes can be made to the
+`replica_strategy`, the `post_step_strategy`, or the `reporting_strategy`.
 
 # Optional keyword arguments:
+* `maximum_time = nothing`: Set the maximum time to a new value and continue the
+    simulation.
 * `last_step = nothing`: Set the last step to a new value and continue the simulation.
 * `wall_time = nothing`: Set the allowed wall time to a new value and continue the
     simulation.
@@ -263,6 +255,7 @@ See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve`](@ref),
 [`step!`](@ref), [`QDSimulation`](@ref).
 """
 function CommonSolve.solve!(sm::QDSimulation;
+    maximum_time = nothing,
     last_step = nothing,
     wall_time = nothing,
     reset_time = false,
@@ -274,6 +267,11 @@ function CommonSolve.solve!(sm::QDSimulation;
     display_name=nothing,
 )
     reset_flags = reset_time
+    if !isnothing(maximum_time)
+        state = sm.state
+        sm.state = @set state.simulation_plan.maximum_time = maximum_time
+        reset_flags = true
+    end
     if !isnothing(last_step)
         state = sm.state
         sm.state = @set state.simulation_plan.last_step = last_step
