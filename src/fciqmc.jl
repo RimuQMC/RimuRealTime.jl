@@ -73,7 +73,6 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
     comp_stat = compress!(v)
     names = (step_stat_names..., comp_name...)
     stats = (step_stat_values..., comp_stat...)
-    @pack! s_state = v, w, Hw, Hw_new, x, wm
 
     if !(time_step_strategy isa ConstantTimeStep)
         u = FirstOrderTimeEvolution(hamiltonian, time_step)
@@ -103,7 +102,7 @@ end
 
 function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
 
-    @unpack v, pv, u, wm, id = s_state
+    @unpack v, pv, u, wm, id, order = s_state
     @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
         reporting_strategy = state
     @unpack time_step = time_step_parameters
@@ -115,7 +114,6 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
     comp_stat = compress!(v)
     names = (step_stat_names..., comp_name...)
     stats = (step_stat_values..., comp_stat...)
-    @pack! s_state = v, w, Hw, Hw_new, x, wm
 
     if !(time_step_strategy isa ConstantTimeStep)
         u = NthOrderTimeEvolution(hamiltonian, time_step, order)

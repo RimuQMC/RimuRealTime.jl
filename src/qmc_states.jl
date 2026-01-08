@@ -97,6 +97,7 @@ mutable struct ProductSingleState{V,W,U} <: QDSingleState
     wm::W
     u::U
     id::String
+    order::Int64
 end
 
 function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
@@ -104,7 +105,7 @@ function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
     pv = zerovector(v)
     wm = wm isa PDWorkingMemory ? wm : working_memory(v)
     u = NthOrderTimeEvolution(hamiltonian, time_step, order)
-    return ProductSingleState(vec, pv, wm, u, id)
+    return ProductSingleState(vec, pv, wm, u, id, order)
 end
 
 """
