@@ -351,9 +351,9 @@ end
 
 function print_stats(io::IO, step, state)
     print(io, "[ ", lpad(step, 11), " | ")
-    shift = lpad(round(first(state).shift_parameters.shift, digits=4), 10)
-    norm = lpad(round(first(state).shift_parameters.pnorm, digits=4), 10)
-    println(io, "shift: ", shift, " | norm: ", norm)
+    time = lpad(round(state.time_step_parameters.time, digits=4), 10)
+    walkers = lpad(round(state.time_step_parameters.prev_walkers, digits=4), 10)
+    println(io, "time: ", time, " | walkers: ", walkers)
     flush(io)
 end
 

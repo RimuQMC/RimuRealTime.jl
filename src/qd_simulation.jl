@@ -315,13 +315,19 @@ function CommonSolve.solve!(sm::QDSimulation;
     isnothing(metadata) || report_metadata!(report, metadata)
     isnothing(display_name) || report_metadata!(report, "display_name", display_name)
 
-    @unpack simulation_plan, step, reporting_strategy = sm.state
+    @unpack simulation_plan, step, reporting_strategy, time_step_parameters = sm.state
 
     last_step = simulation_plan.last_step
     initial_step = step[]
+    maximum_time = simulation_plan.maximum_time
 
     if step[] >= last_step
         @warn "Simulation has already reached the last step."
+        return sm
+    end
+
+    if real(time_step_parameters.time) >= maximum_time
+        @warn "Simulation has already reached the maximum time."
         return sm
     end
 
@@ -341,7 +347,9 @@ function CommonSolve.solve!(sm::QDSimulation;
     un_finalize!(report)
 
     starting_time = time() + sm.elapsed_time
-    update_steps = max((last_step - initial_step) ÷ 200, 100)
+    time_est = maximum_time - real(time_step_parameters.time)
+    last_step_est = min(last_step, step[] + time_est/real(time_step_parameters.time_step))
+    update_steps = max((last_step_est - initial_step) ÷ 200, 100)
     name = get_metadata(sm.report, "display_name")
 
     @withprogress name = while !sm.aborted && !sm.success
@@ -353,7 +361,7 @@ function CommonSolve.solve!(sm::QDSimulation;
             step!(sm)
         end
         if step[] % update_steps == 0
-            @logprogress (step[] - initial_step) / (last_step - initial_step)
+            @logprogress (step[] - initial_step) / (last_step_est - initial_step)
         end
 
     end
