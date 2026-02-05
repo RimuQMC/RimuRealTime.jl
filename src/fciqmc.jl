@@ -76,8 +76,9 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
 
     @unpack v, pv, u, wm, id = s_state
     @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
-        reporting_strategy = state
+        reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
+    @unpack scaling_strategy = algorithm
     step = state.step[]
 
     step_stat_names, step_stat_values, wm, pv = apply_operator!(wm, pv, v, u)
@@ -128,8 +129,9 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
 
     @unpack v, pv, u, wm, id, order = s_state
     @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
-        reporting_strategy = state
+        reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
+    @unpack scaling_strategy = algorithm
     step = state.step[]
 
     step_stat_names, step_stat_values, wm, pv = apply_operator!(wm, pv, v, u)

@@ -43,7 +43,7 @@ function PECSingleState(v, wm, id, hamiltonian, shift)
 end
 
 """
-    RKSingleState(v, wm, id, hamiltonian, time_step) <: QDSingleState
+    RKSingleState(v, wm, id, hamiltonian, time_step, damping) <: QDSingleState
 Struct holding state vector and other vectors required for [`Runge_Kutta`](@ref) time
 evolution. See [`QDReplicaState`](@ref).
 """
@@ -59,7 +59,7 @@ mutable struct RKSingleState{V,W,U} <: QDSingleState
     current_scale::Float64
 end
 
-function RKSingleState(v, wm, id, hamiltonian, time_step, damping)
+function RKSingleState(v, wm, id, hamiltonian, time_step, damping=0.0)
     vec = deepcopy(v)
     w = zerovector(v)
     x = zerovector(v)
