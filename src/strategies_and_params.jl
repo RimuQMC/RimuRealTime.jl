@@ -28,7 +28,9 @@ struct PEC <: EvolutionStrategy end
 each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
 where ``u1 = 1 - i H dt`` and ``u2 = 1 - i H dt / 2``.
 """
-struct Runge_Kutta <: EvolutionStrategy end
+Base.@kwdef struct Runge_Kutta <: EvolutionStrategy
+    damping::Float64 = 0
+end
 
 """
     Euler() <: EvolutionStrategy
@@ -45,6 +47,43 @@ using Rimu.HamiltonianProduct. This strategy does not support adding an energy s
 """
 struct Product <: EvolutionStrategy
     order::Int
+end
+
+"""
+    ScalingStrategy
+Abstract type for scaling strategies used to control the walker number. Passed as a
+parameter to [`QuantumDynamicsProblem`](@ref) or to [`CFCIQMC`](@ref).
+
+##Implemented strategies:
+
+* [`NoScaling`](@ref)
+* [`ConstantScaling`](@ref)
+* [`DynamicScaling`](@ref)
+"""
+abstract type ScalingStrategy end
+
+"""
+    NoScaling() <: ScalingStrategy
+Default [`ScalingStrategy`](@ref) that does not scale the vector.
+"""
+struct NoScaling <: ScalingStrategy end
+
+"""
+    ConstantScaling(scale) <: ScalingStrategy
+Scale the vector by ``\\exp(-scale*dt)`` every step. The exponential is approximated by the
+[`EvolutionStrategy`](@ref).
+"""
+struct ConstantScaling <: ScalingStrategy
+    scale::Float64
+end
+
+"""
+    DynamicScaling(target_walkers) <: ScalingStrategy
+Scale the vector every step so that the 1-norm is equal to `target_walkers`. The cumulative
+scale is stored in the DataFrame as `scale`.
+"""
+struct DynamicScaling <: ScalingStrategy
+    target_walkers::Float64
 end
 
 """
@@ -88,9 +127,10 @@ function update_time_step!(::WalkerControl, time_step_parameters, walkers)
 end
 
 function update_time_step!(::ConstantTimeStep, time_step_parameters, walkers)
-    @unpack time_step, time = time_step_parameters
+    @unpack time_step, time, prev_walkers = time_step_parameters
     time += time_step
-    @pack! time_step_parameters = time
+    prev_walkers = walkers
+    @pack! time_step_parameters = time, prev_walkers
     return (; time)
 end
 

@@ -28,6 +28,7 @@ mutable struct PECSingleState{V,W} <: QDSingleState
     x::V
     wm::W
     id::String
+    current_scale::Float64
 end
 
 function PECSingleState(v, wm, id, hamiltonian, shift)
@@ -37,7 +38,8 @@ function PECSingleState(v, wm, id, hamiltonian, shift)
     Hw_new = zerovector(v)
     x = zerovector(v)
     wm = wm isa PDWorkingMemory ? wm : working_memory(v)
-    return PECSingleState(vec,w,Hw,Hw_new,x,wm,id)
+    current_scale = 1.0
+    return PECSingleState(vec,w,Hw,Hw_new,x,wm,id,current_scale)
 end
 
 """
@@ -53,16 +55,19 @@ mutable struct RKSingleState{V,W,U} <: QDSingleState
     u1::U
     u2::U
     id::String
+    damping::Float64
+    current_scale::Float64
 end
 
-function RKSingleState(v, wm, id, hamiltonian, time_step)
+function RKSingleState(v, wm, id, hamiltonian, time_step, damping)
     vec = deepcopy(v)
     w = zerovector(v)
     x = zerovector(v)
     wm = wm isa PDWorkingMemory ? wm : working_memory(v)
     u1 = FirstOrderTimeEvolution(hamiltonian, time_step)
-    u2 = FirstOrderTimeEvolution(hamiltonian, time_step/2)
-    return RKSingleState(vec, w, x, wm, u1, u2, id)
+    u2 = FirstOrderTimeEvolution(hamiltonian, time_step*(damping + 1)/2)
+    current_scale = 1.0
+    return RKSingleState(vec, w, x, wm, u1, u2, id, damping, current_scale)
 end
 
 """
@@ -76,6 +81,7 @@ mutable struct EulerSingleState{V,W,U} <: QDSingleState
     wm::W
     u::U
     id::String
+    current_scale::Float64
 end
 
 function EulerSingleState(v, wm, id, hamiltonian, time_step)
@@ -83,7 +89,8 @@ function EulerSingleState(v, wm, id, hamiltonian, time_step)
     pv = zerovector(v)
     wm = wm isa PDWorkingMemory ? wm : working_memory(v)
     u = FirstOrderTimeEvolution(hamiltonian, time_step)
-    return EulerSingleState(vec, pv, wm, u, id)
+    current_scale = 1.0
+    return EulerSingleState(vec, pv, wm, u, id, current_scale)
 end
 
 """
@@ -98,6 +105,7 @@ mutable struct ProductSingleState{V,W,U} <: QDSingleState
     u::U
     id::String
     order::Int64
+    current_scale::Float64
 end
 
 function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
@@ -105,7 +113,8 @@ function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
     pv = zerovector(v)
     wm = wm isa PDWorkingMemory ? wm : working_memory(v)
     u = NthOrderTimeEvolution(hamiltonian, time_step, order)
-    return ProductSingleState(vec, pv, wm, u, id, order)
+    current_scale = 1.0
+    return ProductSingleState(vec, pv, wm, u, id, order, current_scale)
 end
 
 """

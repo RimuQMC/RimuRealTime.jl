@@ -74,7 +74,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         if algorithm.evolution_strategy isa PEC
             PECSingleState(v, wm, id, hamiltonian, shift)
         elseif algorithm.evolution_strategy isa Runge_Kutta
-            RKSingleState(v, wm, id, hamiltonian, time_step)
+            RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa Euler
             EulerSingleState(v, wm, id, hamiltonian, time_step)
         elseif algorithm.evolution_strategy isa Product

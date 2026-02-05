@@ -49,6 +49,8 @@ Defines a problem for time evolution under the given `hamiltonian`.
     may be overridden by `start_at`.
 - `evolution_strategy = PEC()`: Strategy for time evolution, see
     [`EvolutionStrategy`](@ref).
+- `scaling_strategy = NoScaling`: Strategy for controlling walkers by scaling the vector,
+    see [`ScalingStrategy`](@ref).
 - `n_replicas = 1`: Number of synchronised independent simulations.
 - `replica_strategy = NoStats(n_replicas)`: Which results to report from replica
     simulations. See Rimu.ReplicaStrategy.
@@ -83,7 +85,7 @@ struct QuantumDynamicsProblem{N}
     algorithm::QDAlgorithm
     hamiltonian::AbstractHamiltonian
     start_at
-    shift::Float64
+    shift::Union{Float64,ComplexF64}
     style::StochasticStyle
     initiator::InitiatorRule
     threading::Bool
@@ -127,6 +129,7 @@ function QuantumDynamicsProblem(
     starting_step = 0,
     last_step = Inf,
     maximum_time = 1.0,
+    scaling_strategy = NoScaling(),
     wall_time = Inf,
     simulation_plan = nothing,
     replica_strategy = NoStats(n_replicas),
@@ -149,7 +152,7 @@ function QuantumDynamicsProblem(
     end
 
     if isnothing(algorithm)
-        algorithm = CFCIQMC(; time_step_strategy, evolution_strategy)
+        algorithm = CFCIQMC(; time_step_strategy, evolution_strategy, scaling_strategy)
     end
 
     n_replicas = Rimu.num_replicas(replica_strategy)
@@ -173,6 +176,10 @@ function QuantumDynamicsProblem(
     if isnothing(initial_time_step_parameters)
         abs_time_step = time_step
         initial_time_step_parameters = (; abs_time_step, alpha, D)
+    end
+
+    if scaling_strategy isa ConstantScaling
+        shift += im*scaling_strategy.scale*time_step
     end
 
     report = Report()
