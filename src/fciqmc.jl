@@ -36,6 +36,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
     add!(Hw_new, w, -shift)
     add!(v, add!(Hw, Hw_new), -0.5*im*time_step)
     Hw, x = Hw_new, Hw
+    
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(v,1)
         scale_names = (:walkers_before_scaling, :scale,)
@@ -84,6 +85,7 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
     step_stat_names, step_stat_values, wm, pv = apply_operator!(wm, pv, v, u)
     add!(pv, v, im*shift*time_step)
     v, pv = pv, v
+
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(v,1)
         scale_names = (:walkers_before_scaling, :scale,)
@@ -136,6 +138,7 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
 
     step_stat_names, step_stat_values, wm, pv = apply_operator!(wm, pv, v, u)
     v, pv = pv, v
+
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(v,1)
         scale_names = (:walkers_before_scaling, :scale,)
@@ -190,6 +193,7 @@ function advance!(report, state::QDReplicaState, s_state::RKSingleState)
     add!(w, v, im*shift*time_step/2)
     a, b, wm, x = apply_operator!(wm, x, w, u1)
     add!(add!(v, x), w, im*shift*time_step - 1)
+
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(v,1)
         scale_names = (:walkers_before_scaling, :scale,)

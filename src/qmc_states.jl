@@ -1,6 +1,7 @@
 """
     QDSingleState
 Abstract type for single states, with different [`EvolutionStrategy`](@ref)s.
+[`QDReplicaState`](@ref) holds the Hamiltonian and time step information.
 
 ##Concrete types:
 
@@ -94,9 +95,9 @@ function EulerSingleState(v, wm, id, hamiltonian, time_step)
 end
 
 """
-    ProductSingleState() <: QDSingleState
-Struct holding state vector and other vectors required for [`Product`](@ref) time evolution.
-See [`QDReplicaState`](@ref).
+    ProductSingleState(v, wm, id, hamiltonian, time_step, order) <: QDSingleState
+Struct holding state vector and other vectors required for [`Product`](@ref) time
+evolution. See [`QDReplicaState`](@ref).
 """
 mutable struct ProductSingleState{V,W,U} <: QDSingleState
     v::V
@@ -165,7 +166,7 @@ Base.getindex(r::QDReplicaState, i::Int) = r.single_states[i]
 function report_default_metadata!(report::Report, state::QDReplicaState)
     report_metadata!(report, "RimuRealTime.PACKAGE_VERSION", RimuRealTime.PACKAGE_VERSION)
     report_metadata!(report, "algorithm", state.algorithm)
-    report_metadata!(report, "laststep", state.simulation_plan.last_step)
+    report_metadata!(report, "maximum_time", state.simulation_plan.maximum_time)
     report_metadata!(report, "num_replicas", num_replicas(state))
     report_metadata!(report, "num_overlaps", num_overlaps(state))
     report_metadata!(report, "hamiltonian", state.hamiltonian)

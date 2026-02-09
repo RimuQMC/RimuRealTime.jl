@@ -158,9 +158,9 @@ end
 
 Advance the simulation by one step.
 
-Calling [`solve!`](@ref) will advance the simulation until the last step or the wall time is
-exceeded. When completing the simulation without calling [`solve!`](@ref), the simulation
-report needs to be finalised by calling [`finalize_report!`](@ref).
+Calling [`solve!`](@ref) will advance the simulation until the last step or the wall time
+is exceeded. When completing the simulation without calling [`solve!`](@ref), the
+simulation report needs to be finalised by calling [`finalize_report!`](@ref).
 
 See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref), [`solve`](@ref),
 [`QDSimulation`](@ref).
