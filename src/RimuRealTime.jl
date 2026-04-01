@@ -48,6 +48,7 @@ export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time
 export address, num_steps, time_evolution_operator, starting_state, time_step
 export CFCIQMC, WalkerControl, QuantumDynamicsProblem, PEC, Runge_Kutta, Euler, Product
 export ReportingStrategy, ReportDFAndInfo, ReportToFile, num_replicas, QDSimulationPlan
-export NoScaling, ConstantScaling, DynamicScaling
+export EvolutionStrategy, ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
+export TimeStepParameters
 
 end

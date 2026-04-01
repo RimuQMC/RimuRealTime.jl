@@ -4,7 +4,7 @@ using RimuRealTime: PECSingleState, RKSingleState, EulerSingleState, ProductSing
 using Test
 
 
-@testset "FirstOrderTimeEvolution" begin
+@testset "NthOrderTimeEvolution" begin
     add = BoseFS(2,0,0)
     H1 = HubbardReal1D(add)
     U1 = FirstOrderTimeEvolution(H1, 0.1)
@@ -20,6 +20,11 @@ using Test
 
     U3 = FirstOrderTimeEvolution(H2, 0.1-0.01im)
     @test U3' == FirstOrderTimeEvolution(H2', -0.1-0.01im)
+
+    U4 = NthOrderTimeEvolution(H1, 0.1, 2)
+    v = DVec(add => 1.0im)
+    w = v - im*0.1*apply_operator(H1,v) - 0.5*0.01*apply_operator(H1, apply_operator(H1,v))
+    @test apply_operator(U4, v) ≈ w
 end
 
 @testset "Clock" begin
@@ -188,4 +193,71 @@ end
     @test 0.0 <= df.alpha[end] <= pi/2
     @test df.time[end] isa ComplexF64
 
+    style = IsDeterministic{ComplexF64}()
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step,
+        last_step=100,
+        start_at=address,
+        style,
+        evolution_strategy=Runge_Kutta(5)
+    )
+    sim1 = solve(problem)
+    df1 = DataFrame(sim1)
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step,
+        last_step=100,
+        start_at=address,
+        style,
+        evolution_strategy=Runge_Kutta()
+    )
+    sim2 = solve(problem)
+    df2 = DataFrame(sim2)
+
+    @test sim1.state[1].v != sim2.state[1].v
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
+        evolution_strategy=Runge_Kutta()
+    )
+    sim = init(problem)
+    @test StochasticStyle(sim.state[1].v) isa IsDeterministic
+    @test sim.state.algorithm.evolution_strategy isa Runge_Kutta
+
+    @test_throws ArgumentError QuantumDynamicsProblem(hamiltonian; start_at=DVec(address=>1.0))
+
+    for evolution_strategy in [Euler(), Product(1)]
+        problem = QuantumDynamicsProblem(
+            hamiltonian;
+            time_step,
+            last_step=1,
+            initial_walkers=1,
+            evolution_strategy,
+            style=IsDeterministic{ComplexF64}()
+        )
+        sim = solve(problem)
+        vec = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
+        U = FirstOrderTimeEvolution(hamiltonian, time_step)
+        @test sim.state[1].v == apply_operator(U, vec)
+    end
+    
+    for evolution_strategy in [PEC(), Runge_Kutta(), Product(2)]
+        problem = QuantumDynamicsProblem(
+            hamiltonian;
+            time_step,
+            last_step=1,
+            initial_walkers=1,
+            evolution_strategy,
+            style=IsDeterministic{ComplexF64}()
+        )
+        sim = solve(problem)
+        vec = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
+        U = NthOrderTimeEvolution(hamiltonian, time_step, 2)
+        @test sim.state[1].v ≈ apply_operator(U, vec)
+    end
 end

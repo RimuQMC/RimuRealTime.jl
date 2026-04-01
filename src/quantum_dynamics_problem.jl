@@ -78,7 +78,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
     `true`, a new random seed is generated from `RandomDevice()`. If set to number, this
     number is used as the seed. This seed is used by `solve` (and `init`) to re-seed the
     default random number generator (consistently on each MPI rank) such that
-    `solve`ing the same `ProjectorMonteCarloProblem` twice will yield identical results. If
+    `solve`ing the same `QuantumDynamicsProblem` twice will yield identical results. If
     set to `false`, no seed is used and consecutive random numbers are used.
 """
 struct QuantumDynamicsProblem{N}

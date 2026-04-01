@@ -288,20 +288,21 @@ end
 
 struct ClockOperatorOffdiagonals{O}
     ods::O
-    t::Int
+    t_op::Int
+    t_add::Int
 end
 
 function Rimu.offdiagonals(c::ClockOperatorColumn)
-    return ClockOperatorOffdiagonals(offdiagonals(c.col), time_index(Rimu.parent_operator(c)))
+    return ClockOperatorOffdiagonals(offdiagonals(c.col), time_index(Rimu.parent_operator(c)), time_index(c.address))
 end
 
 function Base.iterate(o::ClockOperatorOffdiagonals)
     first = iterate(o.ods)
-    if isnothing(first)
+    if isnothing(first) || o.t_op != o.t_add
         return nothing
     end
     (add, val), state = first
-    return ClockAddress(add, o.t) => val, state
+    return ClockAddress(add, o.t_op) => val, state
 end
 
 function Base.iterate(o::ClockOperatorOffdiagonals, state)
@@ -310,7 +311,7 @@ function Base.iterate(o::ClockOperatorOffdiagonals, state)
         return nothing
     end
     (add, val), state = next
-    return ClockAddress(add, o.t) => val, state
+    return ClockAddress(add, o.t_op) => val, state
 end
 
 """

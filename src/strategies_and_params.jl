@@ -14,9 +14,9 @@ abstract type EvolutionStrategy end
 
 """
     PEC() <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using a second order predict-evaluate-correct
+[`EvolutionStrategy`](@ref) for evolution using a second-order predict-evaluate-correct
 algorithm. This requires only one application of the Hamiltonian per time step. The state
-updated every time step according to ``v_{n+1} = v_n - i \frac{dt}{2}(x_n + x_{n+1})``,
+updated every time step according to ``v_{n+1} = v_n - i \\frac{dt}{2}(x_n + x_{n+1})``,
 where ``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is
 initialized as ``x_0 = H v_0``.
 """
@@ -24,10 +24,10 @@ struct PEC <: EvolutionStrategy end
 
 """
     Runge_Kutta(damping) <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using a second order Runge-Kutta algorithm. In
+[`EvolutionStrategy`](@ref) for evolution using a second-order Runge-Kutta algorithm. In
 each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
 where ``u1 = 1 - i H dt`` and ``u2 = 1 - i H dt / 2``.
-Set `damping` to a positive value to use second order damping, where the quadratic term in
+Set `damping` to a positive value to use second-order damping, where the quadratic term in
 the evolution is modified to have a coefficient of ``(d+1)/2``.
 """
 Base.@kwdef struct Runge_Kutta <: EvolutionStrategy
@@ -36,7 +36,7 @@ end
 
 """
     Euler() <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using the first order Euler method. In each step
+[`EvolutionStrategy`](@ref) for evolution using the first-order Euler method. In each step
 the state is updated according to ``v_{n+1} = (1 - i H dt)v_n``.
 """
 struct Euler <: EvolutionStrategy end
