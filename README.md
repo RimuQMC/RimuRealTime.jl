@@ -74,7 +74,7 @@ initiator = Initiator(3)
 
 A `post_step_strategy` can be defined and observables can be calculated with replicas
 using `AllOverlaps` as in Rimu. Here these are used to calculate the 2-norm at each time
-step, and the denisty of phonons in each mode.
+step, and the density of phonons in each mode.
 
 ```julia
 post_step_strategy = Projector(:norm, Norm2Projector())

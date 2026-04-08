@@ -257,7 +257,8 @@ end
     ClockOperator(op::AbstractOperator, t::Int) <: AbstractOperator
 
 Operator wrapper for use in replica strategy `AllOverlaps` with [`Clock`](@ref)
-Hamiltonians.
+Hamiltonians. Observable expectation values are calculated using a `ClockOperator` for the
+numerator and a [`ClockProjector`](@ref) with the same time index for the denominator.
 """
 struct ClockOperator{T, O<:AbstractOperator{T}} <: AbstractOperator{T}
     op::O

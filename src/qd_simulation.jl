@@ -143,7 +143,7 @@ end
 DataFrames.DataFrame(s::QDSimulation) = DataFrame(s.report)
 
 """
-    init(problem::QuantumDynamicsProblem; copy_vectors=true)::QDimulation
+    init(problem::QuantumDynamicsProblem; copy_vectors=true)::QDSimulation
 
 Initialise a [`QDSimulation`](@ref).
 
@@ -163,8 +163,8 @@ Calling [`solve!`](@ref) will advance the simulation until the last step or the 
 is exceeded. When completing the simulation without calling [`solve!`](@ref), the
 simulation report needs to be finalised by calling [`finalize_report!`](@ref).
 
-See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref), [`solve`](@ref),
-[`QDSimulation`](@ref).
+See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref),
+[`solve`](@ref), [`QDSimulation`](@ref).
 """
 function CommonSolve.step!(sm::QDSimulation)
     @unpack state, report, algorithm = sm

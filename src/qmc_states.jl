@@ -127,6 +127,7 @@ Holds information about multiple replicas of [`QDSingleState`](@ref)s.
 - `time_step_parameters`: Time step and parameters for updating it.
 - `shift`: Energy shift.
 - `hamiltonian`: Hamiltonian.
+- `algorithm`: Algorithm.
 - `step::Ref{Int}`: Current step of the simulation
 - `simulation_plan`: Simulation plan
 - `reporting_strategy`: Reporting strategy

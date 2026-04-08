@@ -16,7 +16,7 @@ abstract type EvolutionStrategy end
     PEC() <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using a second-order predict-evaluate-correct
 algorithm. This requires only one application of the Hamiltonian per time step. The state
-updated every time step according to ``v_{n+1} = v_n - i \\frac{dt}{2}(x_n + x_{n+1})``,
+is updated every time step according to ``v_{n+1} = v_n - i \\frac{dt}{2}(x_n + x_{n+1})``,
 where ``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is
 initialized as ``x_0 = H v_0``.
 """
@@ -314,7 +314,7 @@ end
     ReportingStrategy
 
 Abstract type for strategies for reporting data during a simulation of a
-[`ProjectorMonteCarloProblem`](@ref).
+[`QuantumDynamicsProblem`](@ref).
 
 
 # Implemented strategies:
@@ -327,11 +327,11 @@ Abstract type for strategies for reporting data during a simulation of a
 
 A `ReportingStrategy` can define any of the following:
 
-* [`Rimu.refine_reporting_strategy`](@ref)
-* [`Rimu.report!`](@ref)
-* [`Rimu.report_after_step!`](@ref)
-* [`Rimu.finalize_report!`](@ref)
-* [`Rimu.reporting_interval`](@ref)
+* [`RimuRealTime.refine_reporting_strategy`](@ref)
+* [`RimuRealTime.report!`](@ref)
+* [`RimuRealTime.report_after_step!`](@ref)
+* [`RimuRealTime.finalize_report!`](@ref)
+* [`RimuRealTime.reporting_interval`](@ref)
 
 """
 abstract type ReportingStrategy end
@@ -349,7 +349,7 @@ refine_reporting_strategy(reporting_strategy::ReportingStrategy) = reporting_str
      report!(::ReportingStrategy, step, report::Report, nt, id="")
 
 Report `keys` and `values` to `report`, which will be converted to a `DataFrame` before
-[`ProjectorMonteCarloProblem`](@ref) exits. Alternatively, a `nt::NamedTuple` can be passed
+[`QuantumDynamicsProblem`](@ref) exits. Alternatively, a `nt::NamedTuple` can be passed
 in place of `keys` and `values`. If `id` is specified, it is appended to all `keys`. This is
 used to differentiate between values reported by different replicas.
 
@@ -402,13 +402,13 @@ end
 """
     ReportDFAndInfo(; reporting_interval=1, info_interval=100, io=stdout, writeinfo=false) <: ReportingStrategy
 
-The default [`ReportingStrategy`](@ref) for [`ProjectorMonteCarloProblem`](@ref). Report
+The default [`ReportingStrategy`](@ref) for [`QuantumDynamicsProblem`](@ref). Report
 every `reporting_interval`th step to a `DataFrame` and write info message to `io` every
 `info_interval`th reported step (unless `writeinfo == false`). The flag `writeinfo` is
 useful for controlling info messages in MPI codes, e.g. by setting
 `writeinfo = `[`is_mpi_root()`](@ref Rimu.is_mpi_root).
 
-See also [`ProjectorMonteCarloProblem`](@ref), [`ReportToFile`](@ref).
+See also [`QuantumDynamicsProblem`](@ref), [`ReportToFile`](@ref).
 """
 @with_kw struct ReportDFAndInfo <: ReportingStrategy
     reporting_interval::Int = 1
@@ -432,7 +432,7 @@ end
 """
     ReportToFile(; kwargs...) <: ReportingStrategy
 
-[`ReportingStrategy`](@ref) for [`ProjectorMonteCarloProblem`](@ref) that writes the report
+[`ReportingStrategy`](@ref) for [`QuantumDynamicsProblem`](@ref) that writes the report
 directly to a file in the [`Arrow`](https://arrow.apache.org/julia/dev/) format. Useful when
 dealing with long jobs or large numbers of replicas, when the report can incur a significant
 memory cost.
@@ -457,7 +457,7 @@ The arrow file can be read back in with [`load_df(filename)`](@ref) or
 * `compress = :zstd`: compression algorithm to use. Can be `:zstd`, `:lz4` or `nothing`.
 
 See also [`load_df`](@ref), [`save_df`](@ref), [`ReportDFAndInfo`](@ref), and
-[`ProjectorMonteCarloProblem`](@ref).
+[`QuantumDynamicsProblem`](@ref).
 """
 mutable struct ReportToFile{C} <: ReportingStrategy
     filename::String
