@@ -75,7 +75,7 @@ end
 
 function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
 
-    @unpack v, pv, u, wm, id = s_state
+    @unpack v, pv, u, wm, id, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
         reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
@@ -105,7 +105,7 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
         u = FirstOrderTimeEvolution(hamiltonian, time_step)
     end
 
-    @pack! s_state = v, pv, u, wm, id
+    @pack! s_state = v, pv, u, wm, id, current_scale
 
     if step % reporting_interval(reporting_strategy) == 0
         walkers, len = walkernumber_and_length(v)
@@ -129,7 +129,7 @@ end
 
 function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
 
-    @unpack v, pv, u, wm, id, order = s_state
+    @unpack v, pv, u, wm, id, order, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
         reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
@@ -158,7 +158,7 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
         u = NthOrderTimeEvolution(hamiltonian, time_step, order)
     end
 
-    @pack! s_state = v, pv, u, wm, id
+    @pack! s_state = v, pv, u, wm, id, current_scale
 
     if step % reporting_interval(reporting_strategy) == 0
         walkers, len = walkernumber_and_length(v)

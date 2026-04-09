@@ -146,7 +146,7 @@ struct QDReplicaState{
 } <: AbstractVector{QDSingleState}
     single_states::NS
     time_step_parameters::TimeStepParameters
-    shift::Float64
+    shift::Union{Float64,ComplexF64}
     hamiltonian::H
     algorithm::A
     step::Ref{Int}

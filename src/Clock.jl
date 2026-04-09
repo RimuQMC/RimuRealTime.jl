@@ -337,7 +337,7 @@ end
 ClockObservable(o::AbstractOperator, t) = ClockOperator(o, t)
 
 function Rimu.Interfaces.dot_from_right(x, obs::ClockObservable, y)
-    xt = DVec(address(add) => val for (add, val) in pairs(x) if time_index(add) == o.t)
-    yt = DVec(address(add) => val for (add, val) in pairs(y) if time_index(add) == o.t)
+    xt = DVec(address(add) => val for (add, val) in pairs(x) if time_index(add) == obs.t)
+    yt = DVec(address(add) => val for (add, val) in pairs(y) if time_index(add) == obs.t)
     return dot(xt, obs.op, yt)
 end

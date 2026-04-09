@@ -138,42 +138,45 @@ end
 
     for evolution_strategy in [PEC(), Runge_Kutta(), Euler(), Product(2)]
         for alpha in [0.0, 0.01]
-            problem = QuantumDynamicsProblem(
-                hamiltonian;
-                shift,
-                time_step,
-                alpha,
-                maximum_time,
-                initial_walkers,
-                evolution_strategy,
-                replica_strategy,
-                post_step_strategy
-            )
+            for scaling_strategy in [NoScaling(), DynamicScaling(initial_walkers), ConstantScaling(0.1)]
+                problem = QuantumDynamicsProblem(
+                    hamiltonian;
+                    shift,
+                    time_step,
+                    alpha,
+                    maximum_time,
+                    initial_walkers,
+                    evolution_strategy,
+                    replica_strategy,
+                    post_step_strategy,
+                    scaling_strategy
+                )
 
-            @test problem.algorithm == CFCIQMC(; time_step_strategy=ConstantTimeStep(), evolution_strategy)
-            @test problem.hamiltonian == hamiltonian
-            @test num_replicas(problem) == 3
-            @test eval(Meta.parse(repr(problem.simulation_plan))) == problem.simulation_plan
+                @test problem.algorithm == CFCIQMC(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)
+                @test problem.hamiltonian == hamiltonian
+                @test num_replicas(problem) == 3
+                @test eval(Meta.parse(repr(problem.simulation_plan))) == problem.simulation_plan
 
-            sim = init(problem)
-            @test sim.modified[] == false == sim.aborted[] == sim.success[]
-            state = sim.state
-            @test num_replicas(state) == 3
-            tsp = state.time_step_parameters
-            @test tsp.alpha == alpha
-            @test typeof(tsp.time) == (alpha == 0.0 ? Float64 : ComplexF64)
-            @test tsp.prev_walkers == initial_walkers
+                sim = init(problem)
+                @test sim.modified[] == false == sim.aborted[] == sim.success[]
+                state = sim.state
+                @test num_replicas(state) == 3
+                tsp = state.time_step_parameters
+                @test tsp.alpha == alpha
+                @test typeof(tsp.time) == (alpha == 0.0 ? Float64 : ComplexF64)
+                @test tsp.prev_walkers == initial_walkers
 
-            sim = solve(problem)
-            @test sim.modified == true
-            @test sim.success == true
-            @test is_finalized(sim.report) == true
-            sim = solve!(sim; maximum_time=2.0)
+                sim = solve(problem)
+                @test sim.modified == true
+                @test sim.success == true
+                @test is_finalized(sim.report) == true
+                sim = solve!(sim; maximum_time=2.0)
 
-            df = DataFrame(sim)
-            @test typeof(df.G_r1[end]) == ComplexF64
-            @test real(df.time[end]) >= 2.0
-            @test typeof(df.time[end]) == (alpha == 0.0 ? Float64 : ComplexF64)
+                df = DataFrame(sim)
+                @test typeof(df.G_r1[end]) == ComplexF64
+                @test real(df.time[end]) >= 2.0
+                @test typeof(df.time[end]) == (alpha == 0.0 ? Float64 : ComplexF64)
+            end
         end
     end
 

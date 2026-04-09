@@ -6,7 +6,7 @@ Abstract type for quantum dynamics algorithms, for use with
 abstract type QDAlgorithm end
 
 """
-    QDSimulationPlan(; starting_step = 1, last_step = 100, wall_time = Inf, maximum_time = 1.0)
+    QDSimulationPlan(; starting_step = 0, last_step = 100, wall_time = Inf, maximum_time = 1.0)
 Defines the duration of the simulation. The simulation ends when the `last_step` is
 reached, `wall_time` is exceeded, or `maximum_time` is reached.
 
@@ -63,7 +63,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
     the simulation.
 - `D = 0.1`: How strongly the time step phase angle is updated.
 - `algorithm = CFCIQMC(; time_step_strategy, evolution_strategy)`: The algorithm to use.
-    Currenlty only [`CFCIQMC`](@ref) is implemented.
+    Currently only [`CFCIQMC`](@ref) is implemented.
 - `starting_step = 1`: Starting step of the simulation.
 - `wall_time = Inf`: Maximum time allowed for the simulation.
 - `simulation_plan = QDSimulationPlan(; starting_step, last_step, wall_time, maximum_time)`:
@@ -179,7 +179,7 @@ function QuantumDynamicsProblem(
     end
 
     if scaling_strategy isa ConstantScaling
-        shift += im*scaling_strategy.scale*time_step
+        shift += im*scaling_strategy.scale
     end
 
     report = Report()

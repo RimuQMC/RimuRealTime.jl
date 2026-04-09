@@ -256,6 +256,7 @@ The value of `id` is appended to the name of the column, e.g.
 `report!(report, :key, value, :_1)` will report `value` to a column named `:key_1`.
 """
 function report!(report::Report, key::SymbolOrString, value)
+    key = Symbol(key)
     data = report.data
     if haskey(data, key)
         column = data[key]::Vector{typeof(value)}
@@ -563,7 +564,7 @@ function finalize_report!(s::ReportToFile, report)
         empty!(report)
         report.is_finalized[] = true
         if s.return_df
-            return report!(report, RimuIO.load_df(s.filename))
+            return report!(report, load_df(s.filename))
         end
     end
     report.is_finalized[] = true
