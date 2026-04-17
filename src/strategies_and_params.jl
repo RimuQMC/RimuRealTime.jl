@@ -23,12 +23,13 @@ initialized as ``x_0 = H v_0``.
 struct PEC <: EvolutionStrategy end
 
 """
-    Runge_Kutta(damping) <: EvolutionStrategy
+    Runge_Kutta(damping=0) <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using a second-order Runge-Kutta algorithm. In
-each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
-where ``u1 = 1 - i H dt`` and ``u2 = 1 - i H dt / 2``.
-Set `damping` to a positive value to use second-order damping, where the quadratic term in
-the evolution is modified to have a coefficient of ``(d+1)/2``.
+each step the state is updated according to ``v_{n+1} = v_n + (1 + d) u_1 u_2 v_n - u_2 v_n``,
+where ``u1 = 1 - i H dt`` and ``u2 = 1 - i H dt / 2``,
+and ``d`` is the `damping` coefficient that modifies the second order term. Second
+order damping can counteract the effects of large spectral components in the Hamiltonian that
+may lead to an unphysical growth of the 2-norm of the state vector.
 """
 Base.@kwdef struct Runge_Kutta <: EvolutionStrategy
     damping::Float64 = 0
