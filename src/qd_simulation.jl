@@ -38,10 +38,10 @@ function QDSimulation(problem::QuantumDynamicsProblem)
 
     reporting_strategy = refine_reporting_strategy(reporting_strategy)
 
-    n_replicas = Rimu.num_replicas(replica_strategy)
+    n_replicas = num_replicas(replica_strategy)
 
     if !isnothing(random_seed)
-        Random.seed!(random_seed + hash(mpi_rank()))
+        mpi_seed!(random_seed)
     end
 
     start_at = isnothing(start_at) ? starting_address(hamiltonian) : start_at
@@ -61,7 +61,14 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         time = zero(K)
         time_step = K(abs_time_step*exp(-im*alpha))
         walkers = norm(v, 1)
-        time_step_parameters = TimeStepParameters{K}(alpha, walkers, time, time_step, abs_time_step, D)
+        time_step_parameters = TimeStepParameters{K}(
+            alpha,
+            walkers,
+            time,
+            time_step,
+            abs_time_step,
+            D
+        )
     end
     
     wm = working_memory(v)
@@ -193,12 +200,16 @@ function CommonSolve.step!(sm::QDSimulation)
     end
     sm.modified = true
 
-    time_step_stats = update_time_step!(time_step_strategy, time_step_parameters, norm(single_states[1].v, 1))
+    time_step_stats = update_time_step!(
+        time_step_strategy,
+        time_step_parameters,
+        norm(single_states[1].state_vector, 1)
+    )
 
     if step[] % reporting_interval(state.reporting_strategy) == 0
         report!(reporting_strategy, step[], report, time_step_stats)
 
-        replica_names, replica_values = Rimu.replica_stats(replica_strategy, single_states)
+        replica_names, replica_values = replica_stats(replica_strategy, single_states)
         report!(reporting_strategy, step[], report, replica_names, replica_values)
         report_after_step!(reporting_strategy, step[], report, state)
         ensure_correct_lengths(report)

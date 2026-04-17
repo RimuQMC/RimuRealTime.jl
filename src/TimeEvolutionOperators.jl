@@ -10,16 +10,16 @@ struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: ModifiedHamiltonian{Co
     dt::Union{Float64, ComplexF64}
 end
 
-Rimu.Interfaces.parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
+Rimu.parent_operator(u::FirstOrderTimeEvolution) = u.hamiltonian
 Rimu.Hamiltonians.modify_diagonal(u::FirstOrderTimeEvolution, _, value) = 1 - im*u.dt*value
 function Rimu.Hamiltonians.modify_offdiagonal(u::FirstOrderTimeEvolution, _, addr, value)
     addr => -im*u.dt*value
 end
 
 function Rimu.LOStructure(::Type{<:FirstOrderTimeEvolution{H}}) where {H}
-    if Rimu.LOStructure(H) == IsDiagonal()
+    if LOStructure(H) == IsDiagonal()
         return IsDiagonal()
-    elseif Rimu.LOStructure(H) == AdjointUnknown()
+    elseif LOStructure(H) == AdjointUnknown()
         return AdjointUnknown()
     else
         return AdjointKnown()
@@ -38,7 +38,11 @@ the `N`th order Taylor expansion of``\\exp(-iHdt)``. Apply to an `AbstractDVec` 
 `apply_operator` to evolve the state. If `N == -1`, returns an
 [`ExponentialSampler`](@ref), so the vector must not use exact spawning.
 """
-function NthOrderTimeEvolution(H::AbstractHamiltonian, dt::Union{Float64, ComplexF64}, N::Int)
+function NthOrderTimeEvolution(
+    H::AbstractHamiltonian,
+    dt::Union{Float64, ComplexF64},
+    N::Int
+)
     if N == 0
         return IdentityOperator()
     elseif N == -1

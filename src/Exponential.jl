@@ -1,7 +1,7 @@
 """
     ExponentialSampler(H<:AbstractHamiltonian, coeff::Number) <: AbstractHamiltonian
 
-Hamiltonian that samples ``\exp(coeff*H)``. This Hamiltonian does not have iterable
+Hamiltonian that samples `exp(coeff*H)`. This Hamiltonian does not have iterable
 offdiagonals, so exact spawning is not possible.
 """
 struct ExponentialSampler{T,H<:AbstractHamiltonian} <: AbstractHamiltonian{T}
@@ -14,27 +14,32 @@ function ExponentialSampler(h::AbstractHamiltonian{T}, coeff::Number) where {T}
 end
 
 Rimu.starting_address(e::ExponentialSampler) = starting_address(e.hamiltonian)
-parent_operator(e::ExponentialSampler) = e.hamiltonian
+Rimu.parent_operator(e::ExponentialSampler) = e.hamiltonian
 
 function Rimu.LOStructure(::Type{<:ExponentialSampler{T,H}}) where {T, H}
-    if Rimu.LOStructure(H) == IsDiagonal()
+    if LOStructure(H) == IsDiagonal()
         return IsDiagonal()
-    elseif Rimu.LOStructure(H) == AdjointUnknown()
+    elseif LOStructure(H) == AdjointUnknown()
         return AdjointUnknown()
-    elseif Rimu.LOStructure(H) == IsHermitian() && T <: Real
+    elseif LOStructure(H) == IsHermitian() && T <: Real
         return IsHermitian()
     else
         return AdjointKnown()
     end
 end
 
-function Rimu.adjoint(e::ExponentialSampler{T}) where {T}
+function Base.adjoint(e::ExponentialSampler{T}) where {T}
     return ExponentialSampler(e.hamiltonian', T(conj(e.coeff)+0.0im))
 end
 
 Rimu.has_iterable_offdiagonals(::Type{<:ExponentialSampler}) = false
 
-struct ExponentialOperatorColumn{A,T,O<:ExponentialSampler{T},C<:AbstractOperatorColumn} <: AbstractOperatorColumn{A,T,O}
+struct ExponentialOperatorColumn{
+    A,
+    T,
+    O<:ExponentialSampler{T},
+    C<:AbstractOperatorColumn
+} <: AbstractOperatorColumn{A,T,O}
     op::O
     address::A
     ham_column::C

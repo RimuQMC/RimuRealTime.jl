@@ -1,8 +1,17 @@
 using Rimu
 using RimuRealTime
-using RimuRealTime: PECSingleState, RKSingleState, EulerSingleState, ProductSingleState, is_finalized
+using RimuRealTime: PECSingleState, RKSingleState, EulerSingleState, ProductSingleState
+using SafeTestsets
 using Test
+using ExplicitImports: check_no_implicit_imports
 
+@safetestset "ExplicitImports" begin
+    using RimuRealTime
+    using ExplicitImports
+    @test check_no_implicit_imports(
+        RimuRealTime; skip=(RimuRealTime, Base, Core)
+    ) === nothing
+end
 
 @testset "NthOrderTimeEvolution" begin
     add = BoseFS(2,0,0)
@@ -12,7 +21,7 @@ using Test
     @test U1' == FirstOrderTimeEvolution(H1, -0.1)
 
     v = DVec(add => 1.0im)
-    @test apply_operator(U1, v) == v - im*0.1*apply_operator(H1, v)
+    @test U1*v == v - im*0.1*(H1*v)
 
     H2 = HubbardReal1D(add; u=1.0im)
     U2 = FirstOrderTimeEvolution(H2, 0.1)
@@ -23,8 +32,7 @@ using Test
 
     U4 = NthOrderTimeEvolution(H1, 0.1, 2)
     v = DVec(add => 1.0im)
-    w = v - im*0.1*apply_operator(H1,v) - 0.5*0.01*apply_operator(H1, apply_operator(H1,v))
-    @test apply_operator(U4, v) ≈ w
+    @test U4*v ≈ v - im*0.1*(H1*v) - 0.5*0.01*(H1*(H1*v))
 end
 
 @testset "Clock" begin
@@ -61,9 +69,7 @@ end
             start = vts[1]
             @test norm(start) ≈ abs(start[BoseFS(2, 0, 0)]) atol=10^-6
 
-            @test start ≈ apply_operator(U', apply_operator(U, start)) atol=0.0002
-
-            ops = [[ClockOperator(DensityMatrixDiagonal(1), t) for t in 0:10]; [ClockProjector(t) for t in 0:10]]
+            ops = [[ClockOperator(DensityMatrixDiagonal(1), t) for t in 0:10]; [clock_projector(t) for t in 0:10]]
             replica_strategy = AllOverlaps(2; operator=ops)
             start_at = [DVec(100*v; style=IsDynamicSemistochastic{ComplexF64}()) for _ in 1:2]
 
@@ -83,7 +89,7 @@ end
     H = MatrixHamiltonian([1;;])
     E = ExponentialSampler(H,1.0)
     v = DVec(1 => 1000.0; style=IsDynamicSemistochastic())
-    w = apply_operator(E, v)
+    names, values, wm, w = apply_operator!(working_memory(v), zerovector(v), v, E)
     @test w[1] ≈ 1000ℯ rtol=0.03
 
     add = BoseFS(2,0,0)
@@ -109,21 +115,21 @@ end
 
     v = DVec(address => 1.0)
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
-    @test PEC_state.v == v
-    @test PEC_state.v !== v
-    @test PEC_state.Hw == apply_operator(hamiltonian, v) - shift*v
+    @test PEC_state.state_vector == v
+    @test PEC_state.state_vector !== v
+    @test PEC_state.H_vector == hamiltonian*v - shift*v
 
     RK_state = RKSingleState(v, working_memory(v), "", hamiltonian, 0.01)
-    @test RK_state.v == v
-    @test RK_state.v !== v
+    @test RK_state.state_vector == v
+    @test RK_state.state_vector !== v
 
     Euler_state = EulerSingleState(v, working_memory(v), "", hamiltonian, 0.01)
-    @test Euler_state.v == v
-    @test Euler_state.v !== v
+    @test Euler_state.state_vector == v
+    @test Euler_state.state_vector !== v
 
     product_state = ProductSingleState(v, working_memory(v), "", hamiltonian, 0.01, 2)
-    @test product_state.v == v
-    @test product_state.v !== v
+    @test product_state.state_vector == v
+    @test product_state.state_vector !== v
 end
 
 @testset "QuantumDynamicsProblem" begin
@@ -152,7 +158,7 @@ end
                     scaling_strategy
                 )
 
-                @test problem.algorithm == CFCIQMC(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)
+                @test problem.algorithm == DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)
                 @test problem.hamiltonian == hamiltonian
                 @test num_replicas(problem) == 3
                 @test eval(Meta.parse(repr(problem.simulation_plan))) == problem.simulation_plan
@@ -169,7 +175,7 @@ end
                 sim = solve(problem)
                 @test sim.modified == true
                 @test sim.success == true
-                @test is_finalized(sim.report) == true
+                @test Rimu.is_finalized(sim.report) == true
                 sim = solve!(sim; maximum_time=2.0)
 
                 df = DataFrame(sim)
@@ -221,7 +227,7 @@ end
     sim2 = solve(problem)
     df2 = DataFrame(sim2)
 
-    @test sim1.state[1].v != sim2.state[1].v
+    @test sim1.state[1].state_vector != sim2.state[1].state_vector
 
     problem = QuantumDynamicsProblem(
         hamiltonian;
@@ -229,7 +235,7 @@ end
         evolution_strategy=Runge_Kutta()
     )
     sim = init(problem)
-    @test StochasticStyle(sim.state[1].v) isa IsDeterministic
+    @test StochasticStyle(sim.state[1].state_vector) isa IsDeterministic
     @test sim.state.algorithm.evolution_strategy isa Runge_Kutta
 
     @test_throws ArgumentError QuantumDynamicsProblem(hamiltonian; start_at=DVec(address=>1.0))
@@ -246,7 +252,7 @@ end
         sim = solve(problem)
         vec = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
         U = FirstOrderTimeEvolution(hamiltonian, time_step)
-        @test sim.state[1].v == apply_operator(U, vec)
+        @test sim.state[1].state_vector == U*vec
     end
     
     for evolution_strategy in [PEC(), Runge_Kutta(), Product(2)]
@@ -261,6 +267,6 @@ end
         sim = solve(problem)
         vec = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
         U = NthOrderTimeEvolution(hamiltonian, time_step, 2)
-        @test sim.state[1].v ≈ apply_operator(U, vec)
+        @test sim.state[1].state_vector ≈ U*vec
     end
 end

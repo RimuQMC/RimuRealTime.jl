@@ -1,7 +1,7 @@
 """
     QDAlgorithm
 Abstract type for quantum dynamics algorithms, for use with
-[`QuantumDynamicsProblem`](@ref). Implemented algorithms: [`CFCIQMC`](@ref).
+[`QuantumDynamicsProblem`](@ref). Implemented algorithms: [`DiscretizedEvolution`](@ref).
 """
 abstract type QDAlgorithm end
 
@@ -30,7 +30,7 @@ end
     QuantumDynamicsProblem(hamiltonian; kwargs...)
 Defines a problem for time evolution under the given `hamiltonian`.
 
-#Keyword arguments:
+# Keyword arguments:
 - `time_step = 0.01`: Size of the time step. For complex time steps, this is the modulus;
     use keyword `alpha` to define the argument.
 - `maximum_time = 1.0`: How long to evolve for in real time. Alternatively, set `last_step`
@@ -62,8 +62,8 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `time_step_strategy = ConstantTimeStep()`: Defines how the time step is updated during
     the simulation.
 - `D = 0.1`: How strongly the time step phase angle is updated.
-- `algorithm = CFCIQMC(; time_step_strategy, evolution_strategy)`: The algorithm to use.
-    Currently only [`CFCIQMC`](@ref) is implemented.
+- `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy)`: The
+    algorithm to use. Currently only [`DiscretizedEvolution`](@ref) is implemented.
 - `starting_step = 1`: Starting step of the simulation.
 - `wall_time = Inf`: Maximum time allowed for the simulation.
 - `simulation_plan = QDSimulationPlan(; starting_step, last_step, wall_time, maximum_time)`:
@@ -146,16 +146,24 @@ function QuantumDynamicsProblem(
     display_name = "QDSimulation",
     random_seed = true
 )
-
     if isnothing(simulation_plan)
-        simulation_plan = QDSimulationPlan(starting_step, last_step, wall_time, maximum_time)
+        simulation_plan = QDSimulationPlan(
+            starting_step,
+            last_step,
+            wall_time,
+            maximum_time
+        )
     end
 
     if isnothing(algorithm)
-        algorithm = CFCIQMC(; time_step_strategy, evolution_strategy, scaling_strategy)
+        algorithm = DiscretizedEvolution(;
+            time_step_strategy,
+            evolution_strategy,
+            scaling_strategy
+        )
     end
 
-    n_replicas = Rimu.num_replicas(replica_strategy)
+    n_replicas = num_replicas(replica_strategy)
 
     if random_seed == true
         random_seed = rand(RandomDevice(),UInt64)
@@ -216,8 +224,8 @@ function QuantumDynamicsProblem(
     )
 end
 
-num_replicas(::QuantumDynamicsProblem{N}) where N = N
-function num_overlaps(p::QuantumDynamicsProblem{N}) where {N}
+Rimu.num_replicas(::QuantumDynamicsProblem{N}) where {N} = N
+function Rimu.num_overlaps(p::QuantumDynamicsProblem{N}) where {N}
     if p.replica_strategy isa AllOverlaps{N,<:Any,<:Any,true}
         return N*(N-1)÷2
     else

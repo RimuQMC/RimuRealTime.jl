@@ -1,37 +1,38 @@
 module RimuRealTime
 
-using Arrow: Arrow
+using CommonSolve: CommonSolve, init, step!, solve, solve!
+using DataFrames: DataFrames, DataFrame
 using OrderedCollections: OrderedCollections, LittleDict
-using Parameters: Parameters, @pack!, @unpack, @with_kw
+using Parameters: Parameters, @pack!, @unpack
 using ProgressLogging: ProgressLogging, @logprogress, @withprogress
-using Random: Random, RandomDevice, seed!
-using Rimu
-import Rimu: num_replicas
+using Random: RandomDevice
+using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
+    AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown,
+    AdjointUnknown, AllOverlaps, CompressionStrategy, ConstantTimeStep, DVec, Hamiltonians,
+    HamiltonianSum, IdentityOperator, InitiatorRule, IsDiagonal, IsDynamicSemistochastic,
+    IsHermitian, NoCompression, NonInitiator, NoStats, PDWorkingMemory, PostStepStrategy,
+    ReplicaStrategy, Report, ReportDFAndInfo, ReportingStrategy, StochasticStyle,
+    TimeStepStrategy, add!, allows_address_type, apply_operator!, compress!,
+    default_starting_vector, diagonal_element, dimension, dot, ensure_correct_lengths,
+    finalize_report!, get_metadata, has_iterable_offdiagonals, has_random_offdiagonal,
+    LOStructure, mpi_seed!, norm, num_offdiagonals, num_overlaps, num_replicas,
+    offdiagonals, operator_column, parent_operator, post_step_action, random_offdiagonal,
+    refine_reporting_strategy, replica_stats, report!, report_after_step!,
+    report_default_metadata!, report_metadata!, reporting_interval, scale!,
+    starting_address, un_finalize!, walkernumber_and_length, working_memory, zerovector,
+    zerovector!
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
-import TOML
 
 const PACKAGE_NAME = "RimuRealTime"
-const PACKAGE_VERSION = VersionNumber(TOML.parsefile(pkgdir(RimuRealTime, "Project.toml"))["version"])
 
 @doc """
     RimuRealTime
 `RimuRealTime` is a package for simulating many-body quantum systems in real time.
 
-Welcome to `RimuRealTime` version $PACKAGE_VERSION !
+Welcome to `RimuRealTime` version $(pkgversion(RimuRealTime)) !
 """
 RimuRealTime
-
-"""
-    apply_operator(U::AbstractOperator, v::AbstractDVec) -> AbstractDVec
-
-Non-mutating version of Rimu.apply_operator!, computing the product `Uv` and returning
-the resulting vector.
-"""
-function apply_operator(U::AbstractOperator, v::AbstractDVec)
-    n, v, wm, new = apply_operator!(working_memory(v), zerovector(v), v, U)
-    return new
-end
 
 include("TimeEvolutionOperators.jl")
 include("Exponential.jl")
@@ -42,13 +43,12 @@ include("qmc_states.jl")
 include("fciqmc.jl")
 include("qd_simulation.jl")
 
-export apply_operator
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
-export Clock, ClockAddress, ClockOperator, ClockObservable, ClockProjector, time_index
+export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector, time_index
 export address, num_steps, time_evolution_operator, starting_state, time_step
-export CFCIQMC, WalkerControl, QuantumDynamicsProblem, PEC, Runge_Kutta, Euler, Product
-export ReportingStrategy, ReportDFAndInfo, ReportToFile, num_replicas, QDSimulationPlan
+export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
+export PEC, Runge_Kutta, Euler, Product, num_replicas, num_overlaps, TimeStepParameters
 export EvolutionStrategy, ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
-export TimeStepParameters
+export init, step!, solve, solve!
 
 end
