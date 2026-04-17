@@ -14,7 +14,7 @@ Rimu = "c53c40cc-bd84-11e9-2cf4-a9fde2b9386e"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 
 [compat]
-CommonSolve = "0.2.6"
+CommonSolve = "0.2"
 DataFrames = "1.8.2"
 OrderedCollections = "1.8.1"
 Parameters = "0.12.3"
