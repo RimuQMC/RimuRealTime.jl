@@ -180,7 +180,6 @@ struct QDReplicaState{
     RRS<:ReplicaStrategy,
     H,
     A,
-    TS<:TimeStepStrategy,
     RS<:ReportingStrategy,
     PS<:NTuple{<:Any,PostStepStrategy}
 } <: AbstractVector{QDSingleState}
@@ -191,7 +190,6 @@ struct QDReplicaState{
     algorithm::A
     step::Ref{Int}
     simulation_plan::QDSimulationPlan
-    time_step_strategy::TS
     reporting_strategy::RS
     post_step_strategy::PS
     replica_strategy::RRS

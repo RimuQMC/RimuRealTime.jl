@@ -34,18 +34,18 @@ Welcome to `RimuRealTime` version $(pkgversion(RimuRealTime)) !
 """
 RimuRealTime
 
-include("TimeEvolutionOperators.jl")
-include("Exponential.jl")
-include("Clock.jl")
+include("time_evolution_operators.jl")
+include("exponential_sampler.jl")
+include("clock.jl")
 include("strategies_and_params.jl")
 include("quantum_dynamics_problem.jl")
 include("qmc_states.jl")
-include("fciqmc.jl")
+include("discretized_evolution.jl")
 include("qd_simulation.jl")
 
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
-export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector, time_index
-export address, num_steps, time_evolution_operator, starting_state, time_step
+export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
+export time_index, address, num_steps, time_evolution_operator, starting_state
 export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
 export PEC, Runge_Kutta, Euler, Product, num_replicas, num_overlaps, TimeStepParameters
 export EvolutionStrategy, ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling

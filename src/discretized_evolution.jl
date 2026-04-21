@@ -87,10 +87,9 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
 
     @unpack state_vector, previous_vector, evolution_operator, working_mem, id,
         current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
-        reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
-    @unpack scaling_strategy = algorithm
+    @unpack time_step_strategy, scaling_strategy = algorithm
     step = state.step[]
 
     step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(
@@ -144,10 +143,9 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
 
     @unpack state_vector, previous_vector, evolution_operator, working_mem, id, order,
         current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
-        reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
-    @unpack scaling_strategy = algorithm
+    @unpack time_step_strategy, scaling_strategy = algorithm
     step = state.step[]
 
     step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(
@@ -201,10 +199,9 @@ function advance!(report, state::QDReplicaState, s_state::RKSingleState)
 
     @unpack state_vector, storage_vector_1, storage_vector_2, working_mem,
         evolution_operator, half_evolution_operator, id, damping, current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, time_step_strategy,
-        reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
-    @unpack scaling_strategy = algorithm
+    @unpack  time_step_strategy, scaling_strategy = algorithm
     step = state.step[]
 
     a, b, working_mem, storage_vector_1 = apply_operator!(

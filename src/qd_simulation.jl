@@ -14,7 +14,7 @@ Obtain the results of a simulation `sm` as a DataFrame with `DataFrame(sm)`.
 - `aborted::Bool`: Whether the simulation has been aborted
 - `success::Bool`: Whether the simulation has been completed successfully
 - `message::String`: A message about the simulation status
-- `elapsed_time::Float64`: The time elapsed during the simulation
+- `elapsed_time::Float64`: The wall time elapsed during the simulation
 
 See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref).
 """
@@ -98,7 +98,6 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         algorithm,
         Ref(simulation_plan.starting_step),
         simulation_plan,
-        algorithm.time_step_strategy,
         reporting_strategy,
         post_step_strategy,
         replica_strategy
@@ -150,7 +149,7 @@ end
 DataFrames.DataFrame(s::QDSimulation) = DataFrame(s.report)
 
 """
-    init(problem::QuantumDynamicsProblem; copy_vectors=true)::QDSimulation
+    init(problem::QuantumDynamicsProblem)::QDSimulation
 
 Initialise a [`QDSimulation`](@ref).
 
@@ -166,9 +165,10 @@ end
 
 Advance the simulation by one step.
 
-Calling [`solve!`](@ref) will advance the simulation until the last step or the wall time
-is exceeded. When completing the simulation without calling [`solve!`](@ref), the
-simulation report needs to be finalised by calling [`finalize_report!`](@ref).
+Calling [`solve!`](@ref) will advance the simulation until the maximum time is reached, the
+last step is completed, or the wall time limit is reached. When completing the simulation
+without calling [`solve!`](@ref), the simulation report needs to be finalised by calling
+`Rimu.finalize_report!`.
 
 See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref),
 [`solve`](@ref), [`QDSimulation`](@ref).

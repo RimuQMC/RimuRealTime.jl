@@ -104,7 +104,6 @@ end
 Rimu.starting_address(c::ClockColumn) = c.address
 Rimu.parent_operator(c::ClockColumn) = c.clock
 
-
 function Rimu.num_offdiagonals(c::ClockColumn)
     if time_index(starting_address(c)) == 0
         return num_offdiagonals(c.u_column) + 1

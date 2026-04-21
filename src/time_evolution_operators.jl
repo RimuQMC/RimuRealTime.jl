@@ -2,8 +2,8 @@
     FirstOrderTimeEvolution(H::AbstractHamiltonian, dt) <: AbstractOperator{ComplexF64}
 
 Time evolution operator that approximates time evolution under a Hamiltonian `H` as
-``\\exp(-iHdt) \\approx 1 - iHdt``. Apply to an `AbstractDVec` using `apply_operator` to
-evolve the state.
+``\\exp(-iHdt) \\approx 1 - iHdt``. Apply to an `AbstractDVec` using `Rimu.apply_operator!`
+to evolve the state.
 """
 struct FirstOrderTimeEvolution{H<:AbstractHamiltonian} <: ModifiedHamiltonian{ComplexF64}
     hamiltonian::H
@@ -35,7 +35,7 @@ end
 
 Time evolution operator that approximates time evolution under a Hamiltonian `H` as
 the `N`th order Taylor expansion of``\\exp(-iHdt)``. Apply to an `AbstractDVec` using
-`apply_operator` to evolve the state. If `N == -1`, returns an
+`Rimu.apply_operator!` to evolve the state. If `N == -1`, returns an
 [`ExponentialSampler`](@ref), so the vector must not use exact spawning.
 """
 function NthOrderTimeEvolution(
