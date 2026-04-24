@@ -65,7 +65,7 @@ end
             p = ExactDiagonalizationProblem(C)
             result = solve(p)
             v = result.vectors[1]
-            vts = [DVec([address(add) => v[add] for add in keys(v) if time_index(add) == i]) for i in 0:10]
+            vts = [DVec([fock_address(add) => v[add] for add in keys(v) if time_index(add) == i]) for i in 0:10]
             start = vts[1]
             @test norm(start) ≈ abs(start[BoseFS(2, 0, 0)]) atol=10^-6
 

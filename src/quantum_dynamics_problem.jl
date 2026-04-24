@@ -62,7 +62,8 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `alpha = 0.0`: Initial phase angle of the time step.
 - `time_step_strategy = ConstantTimeStep()`: Defines how the time step is updated during
     the simulation.
-- `D = 0.1`: How strongly the time step phase angle is updated.
+- `D = 0.1`: How strongly the time step phase angle is updated if the `time_step_strategy`
+    used is [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
     The algorithm to use. Currently only [`DiscretizedEvolution`](@ref) is implemented.
 - `starting_step = 0`: Starting step of the simulation.

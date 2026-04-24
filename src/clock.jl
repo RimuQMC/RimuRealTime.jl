@@ -2,8 +2,8 @@
     ClockAddress(address, t) <: AbstractFockAddress
 
 Address type for use with [`Clock`](@ref)s. Stores an address in the underlying Fock space,
-and a time step index `t`. These are accessed with `address(::ClockAddress)` and
-`time_index(::ClockAddress)`.
+and a time step index `t`. These are accessed with [`fock_address`](@ref) and
+[`time_index`](@ref).
 """
 struct ClockAddress{N,M,A<:AbstractFockAddress{N,M}} <: AbstractFockAddress{N,M}
     address::A
@@ -11,15 +11,26 @@ struct ClockAddress{N,M,A<:AbstractFockAddress{N,M}} <: AbstractFockAddress{N,M}
 end
 
 function Base.show(io::IO, a::ClockAddress)
-    print(io, "ClockAddress(", address(a), ", ", time_index(a), ")")
+    print(io, "ClockAddress(", fock_address(a), ", ", time_index(a), ")")
 end
 
-address(a::ClockAddress) = a.address
+"""
+    fock_address(a::ClockAddress) -> AbstractFockAddress
+
+Returns the address in the underlying Fock space of the [`ClockAddress`](@ref).
+"""
+fock_address(a::ClockAddress) = a.address
+
+"""
+    time_index(a::ClockAddress) -> Int
+
+Returns the time index of the [`ClockAddress`](@ref).
+"""
 time_index(a::ClockAddress) = a.t
 
 function Base.isless(a::ClockAddress, b::ClockAddress)
     if time_index(a) == time_index(b)
-        return address(a) < address(b)
+        return fock_address(a) < fock_address(b)
     else
         return time_index(a) < time_index(b)
     end
@@ -28,17 +39,27 @@ end
 """
     Clock(u, length; start_at, penalty=1.0) <: AbstractHamiltonian{ComplexF64}
 
-Clock Hamiltonian using time evolution operator `u` with `length` time steps. The optional
-argument `start_at` specifies the state of the system at ``t=0``, otherwise this defaults
-to `DVec(starting_address(u) => 1.0)`. `penalty` is the size of the multiplier on the
-``t=0`` diagonal element that forces the initial state to remain as `start_at`.
+Clock Hamiltonian using time evolution operator `u` with `length` time steps. The operator
+`u` should be a unitary or approximately unitary `AbstractOperator` with a defined
+`adjoint`; for example [`FirstOrderTimeEvolution`](@ref), [`NthOrderTimeEvolution`](@ref),
+or [`ExponentialSampler`](@ref).
+
+The optional argument `start_at` specifies the state of the system at ``t=0``, otherwise
+this defaults to `DVec(starting_address(u) => 1.0)`. This should be an `AbstractDVec` in
+the underlying Fock space.
+
+`penalty` is the size of the multiplier on the ``t=0`` diagonal element that forces the
+initial state to remain as `start_at`.
+
+The address type for the Clock Hamiltonian is [`ClockAddress`](@ref) - these addresses are
+built from addresses in the underlying Fock space and an additional time index, which runs
+from `0` to `length`.
 
 Information about the clock is accessed with the following:
 
- * `time_evolution_operator(clock)` - the time evolution operator
- * `num_steps(clock)` - the number of time steps
- * `starting_state(clock)` - an `AbstractDVec` in the underlying Fock space, representing
- the state of the system at ``t=0``.
+ * `time_evolution_operator(clock)` - the time evolution operator `u`
+ * `num_steps(clock)` - the number of time steps `length`
+ * `starting_state(clock)` - the starting state `start_at`
 
 For calculating observables with `Clock` Hamiltonians, see [`ClockObservable`](@ref),
 [`ClockOperator`](@ref), [`clock_projector`](@ref).
@@ -64,7 +85,7 @@ function Rimu.starting_address(c::Clock)
 end
 
 function Rimu.dimension(c::Clock, a)
-    return (num_steps(c) + 1)*dimension(time_evolution_operator(c), address(a))
+    return (num_steps(c) + 1)*dimension(time_evolution_operator(c), fock_address(a))
 end
 
 Rimu.LOStructure(::Clock) = IsHermitian()
@@ -77,8 +98,26 @@ function Rimu.has_random_offdiagonal(::Type{<:Clock{U1,U2}}) where {U1,U2}
     return has_random_offdiagonal(U1) && has_random_offdiagonal(U2)
 end
 
+"""
+    time_evolution_operator(::Clock) -> AbstractOperator
+
+Return the time evolution operator used to construct the [`Clock`](@ref) Hamiltonian.
+"""
 time_evolution_operator(c::Clock) = c.time_evolution_op
+
+"""
+    num_steps(::Clock) -> Int
+
+Return the number of time steps used in the [`Clock`](@ref) Hamiltonian.
+"""
 num_steps(c::Clock) = c.length
+
+"""
+    starting_state(::Clock)
+
+Return the starting state used to construct the [`Clock`](@ref) Hamiltonian. This is an
+`AbstractDVec` in the underlying Fock space representing the state at ``t=0``.
+"""
 starting_state(c::Clock) = c.start_at
 
 struct ClockColumn{
@@ -96,8 +135,8 @@ function Rimu.operator_column(c::Clock, a::ClockAddress)
     return ClockColumn(
         c,
         a,
-        operator_column(time_evolution_operator(c), address(a)),
-        operator_column(c.adjoint_time_evolution_op, address(a))
+        operator_column(time_evolution_operator(c), fock_address(a)),
+        operator_column(c.adjoint_time_evolution_op, fock_address(a))
     )
 end
 
@@ -117,7 +156,7 @@ end
 function Rimu.diagonal_element(c::ClockColumn)
     if time_index(starting_address(c)) == 0
         return 0.5 + c.clock.penalty*(
-            1 - abs2(starting_state(parent_operator(c))[address(starting_address(c))])
+            1 - abs2(starting_state(parent_operator(c))[fock_address(starting_address(c))])
         )
     elseif time_index(starting_address(c)) == num_steps(parent_operator(c))
         return 0.5
@@ -129,7 +168,7 @@ end
 function Rimu.random_offdiagonal(c::ClockColumn)
     num = min(100, num_offdiagonals(c.u_column))# if u is an ExponentialSampler, num_offdiagonals is infinite
     if rand() < 1/(num + 1)# diagonal of u or u†
-        new_add = address(starting_address(c))
+        new_add = fock_address(starting_address(c))
         prob = 1/(num + 1)
         if time_index(starting_address(c)) == 0
             val = diagonal_element(c.u_column)
@@ -202,13 +241,13 @@ end
 
 function Base.iterate(o::ClockOffdiagonals)
     if time_index(o.address) == 0
-        return ClockAddress(address(o.address), 1) => -0.5*o.diag_u,
+        return ClockAddress(fock_address(o.address), 1) => -0.5*o.diag_u,
             ClockIterState{Nothing}(nothing, false)
     elseif time_index(o.address) == num_steps(o.clock)
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud,
+        return ClockAddress(fock_address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud,
             ClockIterState{Nothing}(nothing, true)
     else
-        return ClockAddress(address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud,
+        return ClockAddress(fock_address(o.address), time_index(o.address) - 1) => -0.5*o.diag_ud,
             ClockIterState{Nothing}(nothing, true)
     end
 end
@@ -255,7 +294,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
             if isnothing(state.s)
                 new = iterate(o.ods_ud)
                 if isnothing(new)
-                    return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u,
+                    return ClockAddress(fock_address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u,
                         ClockIterState{Nothing}(nothing, false)
                 end
                 (add, val), state1 = new
@@ -264,7 +303,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
             else
                 new = iterate(o.ods_ud, state.s)
                 if isnothing(new)
-                    return ClockAddress(address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u,
+                    return ClockAddress(fock_address(o.address), time_index(o.address) + 1) => -0.5*o.diag_u,
                         ClockIterState{Nothing}(nothing, false)
                 end
                 (add, val), state1 = new
@@ -327,7 +366,7 @@ struct ClockOperatorColumn{
     col::C
 end
 function Rimu.operator_column(o::ClockOperator, a)
-    return ClockOperatorColumn(o, a, operator_column(o.op, address(a)))
+    return ClockOperatorColumn(o, a, operator_column(o.op, fock_address(a)))
 end
 
 Rimu.parent_operator(c::ClockOperatorColumn) = c.op
@@ -400,7 +439,7 @@ end
 ClockObservable(op::AbstractOperator, t) = ClockOperator(op, t)
 
 function Rimu.Interfaces.dot_from_right(x::AbstractDVec, obs::ClockObservable, y::AbstractDVec)
-    xt = DVec(address(add) => val for (add, val) in pairs(x) if time_index(add) == obs.t)
-    yt = DVec(address(add) => val for (add, val) in pairs(y) if time_index(add) == obs.t)
+    xt = DVec(fock_address(add) => val for (add, val) in pairs(x) if time_index(add) == obs.t)
+    yt = DVec(fock_address(add) => val for (add, val) in pairs(y) if time_index(add) == obs.t)
     return dot(xt, obs.op, yt)
 end

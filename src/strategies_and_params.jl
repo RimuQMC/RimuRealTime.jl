@@ -105,12 +105,15 @@ end
 
 """
     WalkerControl() <: TimeStepStrategy
-Update the time step to control the walker number. The time step is ``\\exp(-iα)dt``,
-where ``α`` is updated according to 
+Update the phase angle of the time step to control the walker number. The time step is
+``\\exp(-iα)dt``, where ``α`` is updated according to 
 
 ```math
 α_{n+1} = α_{n} + D\\arctan\\left(\\frac{N_\\mathrm{w}^{n+1}}{N_\\mathrm{w}^n}\\right).
 ```
+
+The starting time step and the update strength `D` are determined using keyword arguments
+`time_step`, `alpha`, `D` passed to [`QuantumDynamicsProblem`](@ref).
 """
 struct WalkerControl <: TimeStepStrategy end
 
