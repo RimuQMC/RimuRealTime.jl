@@ -47,8 +47,8 @@ export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
 export time_index, fock_address, num_steps, time_evolution_operator, starting_state
 export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
-export PEC, Runge_Kutta, Euler, Product, num_replicas, num_overlaps, TimeStepParameters
-export EvolutionStrategy, ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
+export EvolutionStrategy, PEC, Runge_Kutta, Euler, Product, num_replicas, num_overlaps
+export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 
 end

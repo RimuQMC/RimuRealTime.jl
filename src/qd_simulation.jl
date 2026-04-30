@@ -52,7 +52,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
     end
 
     if initial_time_step_parameters isa NamedTuple
-        @unpack abs_time_step, alpha, D = initial_time_step_parameters
+        @unpack abs_time_step, alpha = initial_time_step_parameters
         if !iszero(alpha) || algorithm.time_step_strategy isa WalkerControl
             K = ComplexF64
         else
@@ -66,8 +66,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
             walkers,
             time,
             time_step,
-            abs_time_step,
-            D
+            abs_time_step
         )
     end
     
@@ -79,7 +78,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
             "_r$(i)"
         end
         if algorithm.evolution_strategy isa PEC
-            PECSingleState(v, wm, id, hamiltonian, shift)
+            PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa Runge_Kutta
             RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa Euler

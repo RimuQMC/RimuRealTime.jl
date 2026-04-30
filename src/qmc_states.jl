@@ -26,7 +26,7 @@ function Base.getproperty(s::QDSingleState, sym::Symbol)
 end
 
 """
-    PECSingleState(v, working_memory, id, hamiltonian, shift) <: QDSingleState
+    PECSingleState(v, working_memory, id, hamiltonian, shift, damping) <: QDSingleState
 Struct holding state vector and other vectors required for [`PEC`](@ref) time evolution.
 See [`QDReplicaState`](@ref).
 """
@@ -38,9 +38,10 @@ mutable struct PECSingleState{V,W} <: QDSingleState
     storage_vector::V
     working_mem::W
     id::String
+    damping::Float64
     current_scale::Float64
 end
-function PECSingleState(v, wm, id, hamiltonian, shift)
+function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
     state_vector = deepcopy(v)
     copy_vector = zerovector(v)
     H_vector_new = zerovector(v)
@@ -57,6 +58,7 @@ function PECSingleState(v, wm, id, hamiltonian, shift)
         storage_vector,
         working_mem,
         id,
+        damping,
         current_scale
     )
 end

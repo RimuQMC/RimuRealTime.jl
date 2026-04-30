@@ -61,9 +61,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
     Rimu.PostStepStrategy.
 - `alpha = 0.0`: Initial phase angle of the time step.
 - `time_step_strategy = ConstantTimeStep()`: Defines how the time step is updated during
-    the simulation.
-- `D = 0.1`: How strongly the time step phase angle is updated if the `time_step_strategy`
-    used is [`WalkerControl`](@ref).
+    the simulation. The other implemented strategy is [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
     The algorithm to use. Currently only [`DiscretizedEvolution`](@ref) is implemented.
 - `starting_step = 0`: Starting step of the simulation.
@@ -136,12 +134,11 @@ function QuantumDynamicsProblem(
     simulation_plan = nothing,
     replica_strategy = NoStats(n_replicas),
     initial_walkers = 1000.0,
-    D = 0.1,
-    alpha=0.0,
-    time_step_strategy=ConstantTimeStep(),
-    evolution_strategy=PEC(),
-    algorithm=nothing,
-    initial_time_step_parameters=nothing,
+    alpha = 0.0,
+    time_step_strategy = ConstantTimeStep(),
+    evolution_strategy = PEC(),
+    algorithm = nothing,
+    initial_time_step_parameters = nothing,
     reporting_strategy = ReportDFAndInfo(),
     post_step_strategy = (),
     metadata = nothing,
@@ -185,7 +182,7 @@ function QuantumDynamicsProblem(
 
     if isnothing(initial_time_step_parameters)
         abs_time_step = time_step
-        initial_time_step_parameters = (; abs_time_step, alpha, D)
+        initial_time_step_parameters = (; abs_time_step, alpha)
     end
 
     if scaling_strategy isa ConstantScaling

@@ -13,23 +13,28 @@ Abstract type for time evolution strategies. Passed as a parameter to
 abstract type EvolutionStrategy end
 
 """
-    PEC() <: EvolutionStrategy
+    PEC(damping=0) <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using a second-order predict-evaluate-correct
 algorithm. This requires only one application of the Hamiltonian per time step. The state
-is updated every time step according to ``v_{n+1} = v_n - i \\frac{dt}{2}(x_n + x_{n+1})``,
-where ``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is
-initialized as ``x_0 = H v_0``.
+is updated every time step according to
+``v_{n+1} = v_n - i \\frac{dt}{2}((1 - d) x_n + (1 + d) x_{n+1})``, where
+``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is initialized
+as ``x_0 = H v_0``. ``d`` is the `damping` coefficient that modifies the second-order term.
+Second-order damping can counteract the effects of large spectral components in the
+Hamiltonian that may lead to an unphysical growth of the 2-norm of the state vector.
 """
-struct PEC <: EvolutionStrategy end
+Base.@kwdef struct PEC <: EvolutionStrategy
+    damping::Float64 = 0
+end
 
 """
     Runge_Kutta(damping=0) <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using a second-order Runge-Kutta algorithm. In
 each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
 where ``u1 = 1 - i H dt`` and ``u2 = 1 - (1 + d) i H dt / 2``,
-and ``d`` is the `damping` coefficient that modifies the second order term. Second
-order damping can counteract the effects of large spectral components in the Hamiltonian that
-may lead to an unphysical growth of the 2-norm of the state vector.
+and ``d`` is the `damping` coefficient that modifies the second-order term. Second-order
+damping can counteract the effects of large spectral components in the Hamiltonian that may
+lead to an unphysical growth of the 2-norm of the state vector.
 """
 Base.@kwdef struct Runge_Kutta <: EvolutionStrategy
     damping::Float64 = 0
@@ -91,8 +96,7 @@ end
 
 """
     TimeStepParameters
-Struct for storing parameters needed for updating the time step with
-[`WalkerControl`](@ref).
+Struct for storing the total time and parameters related to the time step.
 """
 mutable struct TimeStepParameters{K<:Union{Float64, ComplexF64}}
     alpha::Float64
@@ -100,26 +104,28 @@ mutable struct TimeStepParameters{K<:Union{Float64, ComplexF64}}
     time::K
     time_step::K
     abs_time_step::Float64
-    D::Float64
 end
 
 """
-    WalkerControl() <: TimeStepStrategy
+    WalkerControl(update_strength) <: TimeStepStrategy
 Update the phase angle of the time step to control the walker number. The time step is
-``\\exp(-iα)dt``, where ``α`` is updated according to 
+``dt \\exp(-iα)``, where ``α`` is updated according to 
 
 ```math
-α_{n+1} = α_{n} + D\\arctan\\left(\\frac{N_\\mathrm{w}^{n+1}}{N_\\mathrm{w}^n}\\right).
+α_{n+1} = α_{n} + D \\arctan\\left(\\frac{N_\\mathrm{w}^{n+1}}{N_\\mathrm{w}^n}\\right),
 ```
+where ``D`` is the `update_strength`.
 
-The starting time step and the update strength `D` are determined using keyword arguments
-`time_step`, `alpha`, `D` passed to [`QuantumDynamicsProblem`](@ref).
+The time step amplitude ``dt`` and the starting angle ``α`` are determined using keyword
+arguments `time_step` and `alpha` passed to [`QuantumDynamicsProblem`](@ref).
 """
-struct WalkerControl <: TimeStepStrategy end
+Base.@kwdef struct WalkerControl <: TimeStepStrategy
+    update_strength::Float64 = 0.1
+end
 
-function update_time_step!(::WalkerControl, time_step_parameters, walkers)
-    @unpack time_step, alpha, prev_walkers, D, time, abs_time_step= time_step_parameters
-    alpha += D*atan(walkers/prev_walkers)
+function update_time_step!(s::WalkerControl, time_step_parameters, walkers)
+    @unpack time_step, alpha, prev_walkers, time, abs_time_step= time_step_parameters
+    alpha += s.update_strength*atan(walkers/prev_walkers)
     if alpha < 0.0
         alpha = 0.0
     elseif alpha > pi/2
@@ -128,7 +134,7 @@ function update_time_step!(::WalkerControl, time_step_parameters, walkers)
     prev_walkers = walkers
     time_step = iszero(alpha) ? abs_time_step : abs_time_step*exp(-im*alpha)
     time += time_step
-    @pack! time_step_parameters = time_step, alpha, prev_walkers, D, time, abs_time_step
+    @pack! time_step_parameters = time_step, alpha, prev_walkers, time, abs_time_step
     return (; time_step, alpha, time)
 end
 

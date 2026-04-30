@@ -31,7 +31,7 @@ Advance the state `s_state` by one step, and write data to the `report`.
 function advance!(report, state::QDReplicaState, s_state::PECSingleState)
 
     @unpack state_vector, copy_vector, H_vector, H_vector_new, storage_vector, working_mem,
-        id, current_scale = s_state
+        id, damping, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
     @unpack time_step = time_step_parameters
     @unpack scaling_strategy = algorithm
@@ -43,7 +43,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
         working_mem, storage_vector, copy_vector, hamiltonian
     )
     add!(H_vector_new, copy_vector, -shift)
-    add!(state_vector, add!(H_vector, H_vector_new), -0.5*im*time_step)
+    add!(state_vector, add!(H_vector, H_vector_new, 1+damping, 1-damping), -0.5*im*time_step)
     H_vector, storage_vector = H_vector_new, H_vector
     
     if scaling_strategy isa DynamicScaling
