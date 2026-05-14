@@ -50,6 +50,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
         walkers_prev = norm(state_vector,1)
         scale_names = (:walkers_before_scaling, :scale,)
         scale!(state_vector, scaling_strategy.target_walkers/walkers_prev)
+        scale!(H_vector, scaling_strategy.target_walkers/walkers_prev)
         current_scale *= scaling_strategy.target_walkers/walkers_prev
         scale_stats = (walkers_prev, current_scale,)
     else
