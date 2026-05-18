@@ -47,7 +47,7 @@ function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
     H_vector_new = zerovector(v)
     storage_vector = zerovector(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
-    names, values, working_mem, H_vector = apply_operator!(wm, zerovector(v), v, hamiltonian)
+    names, values, working_mem, H_vector = apply_operator!(working_mem, zerovector(v), v, hamiltonian)
     add!(H_vector, v, -shift)
     current_scale = 1.0
     return PECSingleState(
