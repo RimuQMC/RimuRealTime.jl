@@ -117,7 +117,7 @@ end
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
     @test PEC_state.state_vector == v
     @test PEC_state.state_vector !== v
-    @test PEC_state.H_vector == hamiltonian*v - shift*v
+    @test PEC_state.h_predictor_old == hamiltonian*v - shift*v
 
     RK_state = RKSingleState(v, working_memory(v), "", hamiltonian, 0.01)
     @test RK_state.state_vector == v
@@ -142,7 +142,7 @@ end
     maximum_time = 1.0
     time_step = 0.01
 
-    for evolution_strategy in [PEC(), Runge_Kutta(), Euler(), Product(2)]
+    for evolution_strategy in [PEC(), RungeKutta(), Euler(), Product(2)]
         for alpha in [0.0, 0.01]
             for scaling_strategy in [NoScaling(), DynamicScaling(initial_walkers), ConstantScaling(0.1)]
                 problem = QuantumDynamicsProblem(
@@ -210,7 +210,7 @@ end
         last_step=100,
         start_at=address,
         style,
-        evolution_strategy=Runge_Kutta(5)
+        evolution_strategy=RungeKutta(5)
     )
     sim1 = solve(problem)
     df1 = DataFrame(sim1)
@@ -222,7 +222,7 @@ end
         last_step=100,
         start_at=address,
         style,
-        evolution_strategy=Runge_Kutta()
+        evolution_strategy=RungeKutta()
     )
     sim2 = solve(problem)
     df2 = DataFrame(sim2)
@@ -232,11 +232,11 @@ end
     problem = QuantumDynamicsProblem(
         hamiltonian;
         start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
-        evolution_strategy=Runge_Kutta()
+        evolution_strategy=RungeKutta()
     )
     sim = init(problem)
     @test StochasticStyle(sim.state[1].state_vector) isa IsDeterministic
-    @test sim.state.algorithm.evolution_strategy isa Runge_Kutta
+    @test sim.state.algorithm.evolution_strategy isa RungeKutta
 
     @test_throws ArgumentError QuantumDynamicsProblem(hamiltonian; start_at=DVec(address=>1.0))
 
@@ -255,7 +255,7 @@ end
         @test sim.state[1].state_vector == U*vec
     end
     
-    for evolution_strategy in [PEC(), Runge_Kutta(), Product(2)]
+    for evolution_strategy in [PEC(), RungeKutta(), Product(2)]
         problem = QuantumDynamicsProblem(
             hamiltonian;
             time_step,

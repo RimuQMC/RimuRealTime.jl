@@ -6,61 +6,17 @@ Abstract type for time evolution strategies. Passed as a parameter to
 ## Implemented strategies:
 
 * [`PEC`](@ref)
-* [`Runge_Kutta`](@ref)
+* [`RungeKutta`](@ref)
 * [`Euler`](@ref)
 * [`Product`](@ref)
 """
 abstract type EvolutionStrategy end
 
 """
-    PEC(damping=0) <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using a second-order predict-evaluate-correct
-algorithm. This requires only one application of the Hamiltonian per time step. The state
-is updated every time step according to
-``v_{n+1} = v_n - i \\frac{dt}{2}((1 - d) x_n + (1 + d) x_{n+1})``, where
-``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is initialized
-as ``x_0 = H v_0``. ``d`` is the `damping` coefficient that modifies the second-order term.
-Second-order damping can counteract the effects of large spectral components in the
-Hamiltonian that may lead to an unphysical growth of the 2-norm of the state vector.
-"""
-Base.@kwdef struct PEC <: EvolutionStrategy
-    damping::Float64 = 0
-end
-
-"""
-    Runge_Kutta(damping=0) <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using a second-order Runge-Kutta algorithm. In
-each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
-where ``u1 = 1 - i H dt`` and ``u2 = 1 - (1 + d) i H dt / 2``,
-and ``d`` is the `damping` coefficient that modifies the second-order term. Second-order
-damping can counteract the effects of large spectral components in the Hamiltonian that may
-lead to an unphysical growth of the 2-norm of the state vector.
-"""
-Base.@kwdef struct Runge_Kutta <: EvolutionStrategy
-    damping::Float64 = 0
-end
-
-"""
-    Euler() <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using the first-order Euler method. In each step
-the state is updated according to ``v_{n+1} = (1 - i H dt)v_n``.
-"""
-struct Euler <: EvolutionStrategy end
-
-"""
-    Product(n) <: EvolutionStrategy
-[`EvolutionStrategy`](@ref) for evolution using an `n`th order expansion of the exponential
-time evolution operator ``\\exp(-i H dt)``, where powers of the Hamiltonian are applied
-using Rimu.HamiltonianProduct. This strategy does not support adding an energy shift.
-"""
-struct Product <: EvolutionStrategy
-    order::Int
-end
-
-"""
     ScalingStrategy
 Abstract type for scaling strategies used to control the walker number. Passed as a
 parameter to [`QuantumDynamicsProblem`](@ref) or to [`DiscretizedEvolution`](@ref).
+Strategies may be implemented by adding a method for [`scale_state_vector!`](@ref).
 
 ## Implemented strategies:
 
@@ -69,6 +25,16 @@ parameter to [`QuantumDynamicsProblem`](@ref) or to [`DiscretizedEvolution`](@re
 * [`DynamicScaling`](@ref)
 """
 abstract type ScalingStrategy end
+
+"""
+    scale_state_vector!(scaling_strategy::ScalingStrategy, state_vector, current_scale) ->
+        names, stats, current_scale
+Modify the `state_vector` according to the `scaling_strategy` and return the statistics to
+be reported, and the cumulative `current_scale`.
+"""
+function scale_state_vector!(::ScalingStrategy, _, current_scale)
+    return (), (), current_scale
+end
 
 """
     NoScaling() <: ScalingStrategy
@@ -92,6 +58,15 @@ scale is stored in the DataFrame as `scale`.
 """
 struct DynamicScaling <: ScalingStrategy
     target_walkers::Float64
+end
+
+function scale_state_vector!(scaling_strategy::DynamicScaling, state_vector, current_scale)
+    walkers_prev = norm(state_vector, 1)
+    scale_names = (:walkers_before_scaling, :scale,)
+    scale!(state_vector, scaling_strategy.target_walkers/walkers_prev)
+    current_scale *= scaling_strategy.target_walkers/walkers_prev
+    scale_stats = (walkers_prev, current_scale,)
+    return scale_names, scale_stats, current_scale
 end
 
 """
