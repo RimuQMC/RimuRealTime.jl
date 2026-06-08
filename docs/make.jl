@@ -15,3 +15,8 @@ makedocs(;
         "Home" => "index.md",
     ],
 )
+
+deploydocs(
+    repo = "github.com/RimuQMC/RimuRealTime.jl.git",
+    push_preview = true,
+)

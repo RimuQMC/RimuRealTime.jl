@@ -56,7 +56,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `replica_strategy = NoStats(n_replicas)`: Which results to report from replica
     simulations. See Rimu.ReplicaStrategy.
 - `reporting_strategy = ReportDFAndInfo()`: How and when to report results, see
-    [`ReportingStrategy`](@ref).
+    `ReportingStrategy` in the [Rimu repository](https://rimuqmc.github.io/Rimu.jl/stable/index.html).
 - `post_step_strategy = ()`: Extract observables (e.g. Rimu.ProjectedEnergy), see
     Rimu.PostStepStrategy.
 - `alpha = 0.0`: Initial phase angle of the time step.
