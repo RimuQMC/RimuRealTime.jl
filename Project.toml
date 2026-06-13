@@ -16,7 +16,7 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 [compat]
 CommonSolve = "0.2"
 DataFrames = "1.7"
-OrderedCollections = "1.8.1, 2"
+OrderedCollections = "1.8.1, 2" 
 Parameters = "0.12.3"
 ProgressLogging = "0.1.6"
 Random = "1.9"
