@@ -14,11 +14,11 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     ReplicaStrategy, Report, ReportDFAndInfo, ReportingStrategy, StochasticStyle,
     TimeStepStrategy, add!, allows_address_type, apply_operator!, compress!,
     default_starting_vector, diagonal_element, dimension, dot, ensure_correct_lengths,
-    finalize_report!, get_metadata, has_iterable_offdiagonals, has_random_offdiagonal,
+    finalize_report!, metadata, has_iterable_offdiagonals, has_random_offdiagonal,
     LOStructure, mpi_seed!, norm, num_offdiagonals, num_overlaps, num_replicas,
     offdiagonals, operator_column, parent_operator, post_step_action, random_offdiagonal,
     refine_reporting_strategy, replica_stats, report!, report_after_step!,
-    report_default_metadata!, report_metadata!, reporting_interval, scale!,
+    report_default_metadata!, metadata!, reporting_interval, scale!,
     starting_address, un_finalize!, walkernumber_and_length, working_memory, zerovector,
     zerovector!
 using Rimu.Hamiltonians: ModifiedHamiltonian

@@ -33,7 +33,9 @@ function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
     predictor = zerovector(v)
     h_predictor = zerovector(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
-    names, values, working_mem, h_predictor_old = apply_operator!(working_mem, zerovector(v), v, hamiltonian)
+    names, values, working_mem, h_predictor_old = apply_operator!(
+        NoCompression(), working_mem, zerovector(v), v, hamiltonian
+    )
     add!(h_predictor_old, v, -shift)
     current_scale = 1.0
     return PECSingleState(
@@ -68,7 +70,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
 
     # evaluate
     step_stat_names, step_stat_values, working_mem, h_predictor = apply_operator!(
-        working_mem, h_predictor, predictor, hamiltonian
+        NoCompression(), working_mem, h_predictor, predictor, hamiltonian
     )
     add!(h_predictor, predictor, -shift) # x_{n+1} = (H - shift) * w_{n+1}
 
@@ -77,7 +79,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
     # v_{n+1} = v_n - i*dt/2 * [(1-d) x_n + (1+d) x_{n+1}]
 
     h_predictor_old, h_predictor = h_predictor, h_predictor_old # swap names of x_{n+1} and x_n for next step
-    
+
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(state_vector,1)
         scale_names = (:walkers_before_scaling, :scale,)
@@ -89,7 +91,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
         scale_names = ()
         scale_stats = ()
     end
-    
+
     comp_name = CompressionStrategy(state_vector) isa NoCompression ? () : (:len_before_compression,)
     comp_stat = compress!(state_vector)
     names = (step_stat_names..., comp_name..., scale_names...)
@@ -105,7 +107,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState)
         report!(reporting_strategy, step, report, (; walkers), id)
 
         report!(reporting_strategy, step, report, names, stats, id)
-        
+
         post_step_stats = post_step_action(state.post_step_strategy, s_state, step)
         report!(reporting_strategy, step, report, post_step_stats, id)
 

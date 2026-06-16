@@ -69,7 +69,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
             abs_time_step
         )
     end
-    
+
     wm = working_memory(v)
     single_states = ntuple(n_replicas) do i
         id = if n_replicas == 1
@@ -103,7 +103,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
     )
     report = Report()
     report_default_metadata!(report, state)
-    report_metadata!(report, metadata)
+    metadata!(report, metadata)
 
     return QDSimulation(
         problem, state, report, false, false, false, "", 0.0
@@ -125,11 +125,11 @@ end
 function report_simulation_status_metadata!(report::Report, sm::QDSimulation)
     @unpack modified, aborted, success, message, elapsed_time = sm
 
-    report_metadata!(report, "modified", modified)
-    report_metadata!(report, "aborted", aborted)
-    report_metadata!(report, "success", success)
-    report_metadata!(report, "message", message)
-    report_metadata!(report, "elapsed_time", elapsed_time)
+    metadata!(report, "modified", modified)
+    metadata!(report, "aborted", aborted)
+    metadata!(report, "success", success)
+    metadata!(report, "message", message)
+    metadata!(report, "elapsed_time", elapsed_time)
     return report
 end
 
@@ -286,7 +286,7 @@ function CommonSolve.solve!(sm::QDSimulation;
     if !isnothing(last_step)
         state = sm.state
         sm.state = @set state.simulation_plan.last_step = last_step
-        report_metadata!(sm.report, "laststep", last_step)
+        metadata!(sm.report, "laststep", last_step)
         reset_flags = true
     end
     if !isnothing(wall_time)
@@ -323,8 +323,8 @@ function CommonSolve.solve!(sm::QDSimulation;
         empty!(report)
         report_default_metadata!(report, sm.state)
     end
-    isnothing(metadata) || report_metadata!(report, metadata)
-    isnothing(display_name) || report_metadata!(report, "display_name", display_name)
+    isnothing(metadata) || metadata!(report, metadata)
+    isnothing(display_name) || metadata!(report, "display_name", display_name)
 
     @unpack simulation_plan, step, reporting_strategy, time_step_parameters = sm.state
 
@@ -361,7 +361,7 @@ function CommonSolve.solve!(sm::QDSimulation;
     time_est = maximum_time - real(time_step_parameters.time)
     last_step_est = min(last_step, step[] + time_est/real(time_step_parameters.time_step))
     update_steps = max((last_step_est - initial_step) ÷ 200, 100)
-    name = get_metadata(sm.report, "display_name")
+    name = Rimu.metadata(sm.report, "display_name")
 
     @withprogress name = while !sm.aborted && !sm.success
         if time() - starting_time > simulation_plan.wall_time
