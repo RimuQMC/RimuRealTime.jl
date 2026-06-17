@@ -4,7 +4,7 @@ CurrentModule = RimuRealTime
 
 # API
 
-## RimuRealTime
+### RimuRealTime
 
 ```@index
 ```
