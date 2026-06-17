@@ -60,10 +60,35 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
 
     zerovector!(state_imag_staggered_previous)
     add!(state_imag_staggered_previous, state_imag_staggered,1.0)
-    step_stat_names, step_stat_values, working_mem, h_imag = apply_opreator!(
+    step_stat_names, step_stat_values, working_mem, h_imag = apply_opreator!(NoCompression(),
         working_mem, h_imag, state_imag_staggered, hamiltonian
     )
     add!(h_imag, state_imag_staggered, -shift)
     add!(state_real, h_imag, time_step)
+    step_stat_names, step_stat_values, working_mem, h_real = apply_opreator!(NoCompression(), working_mem, h_real, state_real, hamiltonian)
+    add!(h_real, state_real, -shift)
+    add!(state_imag_staggered, h_real, -time_step)
 
+    # reconstruct the full state vector
+    zerovector!(state_vector)
+    add!(state_vector, state_real, 1.0)
+    add!(state_vector, state_imag_staggered, 0.5im) # +1/2 I(t+3dt/2)
+    add!(state_vector, state_imag_staggered_previous, 0.5im) # +1/2 I(t+dt/2)
+
+    if scaling_strategy isa DynamicScaling
+        walkers_prev = norm(state_vector,1)
+        scale_names = (:walkers_before_scaling, :scale,)
+        scale!(state_vector, scaling_strategy.target_walkers/walkers_prev)
+        scale!(state_real, scaling_strategy.target_walkers/walkers_prev)
+        scale!(state_imag_staggered, scaling_strategy.target_walkers/walkers_prev)
+        scale!(state_imag_staggered_previous, scaling_strategy.target_walkers/walkers_prev) # both staggered parts share the same scale
+        current_scale *= scaling_strategy.target_walkers/walkers_prev
+        scale_stats = (walkers_prev, current_scale,)
+    else
+        scale_names , scale_stats, current_scale = scale_state_vector!(
+            scaling_strategy, state_vector, current_scale
+        )
+    end
+
+    # compression
 end
