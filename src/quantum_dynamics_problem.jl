@@ -190,8 +190,8 @@ function QuantumDynamicsProblem(
     end
 
     report = Report()
-    report_metadata!(report, "display_name", display_name)
-    isnothing(metadata) || report_metadata!(report, metadata)
+    metadata!(report, "display_name", display_name)
+    isnothing(metadata) || metadata!(report, metadata)
     metadata = report.meta::LittleDict{String, String}
 
     if post_step_strategy isa PostStepStrategy
