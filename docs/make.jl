@@ -12,7 +12,14 @@ makedocs(;
         assets=String[],
     ),
     pages=[
-        "Home" => "index.md",
+        "Guide" => "index.md",
+        "User Documentation" => [
+            "Real-time Dynamics" => "realtime.md",
+            "Evolution Strategies" => "evolution.md",
+            "Clock Hamiltonian" => "clock.md",
+            "Population Control" => "population.md",
+        ],
+        "API"   => "api.md",
     ],
 )
 
