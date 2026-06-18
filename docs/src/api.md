@@ -9,6 +9,15 @@ CurrentModule = RimuRealTime
 ```@index
 ```
 
-```@autodocs
-Modules = [RimuRealTime]
+```@docs
+QDAlgorithm
+DiscretizedEvolution
+QDReplicaState
+QDSingleState
+EulerSingleState
+RKSingleState
+PECSingleState
+ProductSingleState
+TimeStepParameters
+advance!
 ```
