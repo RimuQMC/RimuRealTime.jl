@@ -1,6 +1,6 @@
 using Rimu
 using RimuRealTime
-using RimuRealTime: PECSingleState, RKSingleState, EulerSingleState, ProductSingleState
+using RimuRealTime: LeapfrogSingleState, PECSingleState, RKSingleState, EulerSingleState, ProductSingleState
 using SafeTestsets
 using Test
 using ExplicitImports: check_no_implicit_imports
@@ -114,6 +114,16 @@ end
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
 
     v = DVec(address => 1.0)
+    v_complex = DVec(address => 1.0 + 0.0im)
+
+    Leapfrog_state = LeapfrogSingleState(v_complex, working_memory(v_complex), "", hamiltonian, shift, 0.01)
+    @test Leapfrog_state.state_vector == v_complex
+    @test Leapfrog_state.state_vector !== v_complex
+    @test Leapfrog_state.state_real == v
+    @test Leapfrog_state.state_real !== v
+    @test Leapfrog_state.state_imag_staggered == -0.01/2 * (hamiltonian*v - shift*v)
+    @test Leapfrog_state.state_imag_staggered_previous == 0.01/2 * (hamiltonian*v - shift*v)
+
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
     @test PEC_state.state_vector == v
     @test PEC_state.state_vector !== v
@@ -269,4 +279,48 @@ end
         U = NthOrderTimeEvolution(hamiltonian, time_step, 2)
         @test sim.state[1].state_vector ≈ U*vec
     end
+end
+
+@testset "Norm2LeapfrogProjector" begin
+    address = FermiFS(1,1,1,1,1,0,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    v = DVec(address => 1.0 + 0.0im)
+    lf = RimuRealTime.LeapfrogSingleState(v, working_memory(v), "", hamiltonian, shift, 0.01)
+    
+    p = Rimu.Projector(projector=Norm2LeapfrogProjector())
+    
+    expected = sqrt(max(0.0, real(dot(lf.state_real, lf.state_real)) +
+                             real(dot(lf.state_imag_staggered, lf.state_imag_staggered_previous))))
+    
+    @test Rimu.post_step_action(p, lf, 1)[1].second ≈ expected
+
+    lf.state_real = RimuRealTime.real_part(v)
+    lf.state_imag_staggered = RimuRealTime.real_part(v)
+    lf.state_imag_staggered_previous = -10.0 * RimuRealTime.real_part(v)
+    
+    result = Rimu.post_step_action(p, lf, 2)[1].second
+    @test result >= 0.0
+    @test !isnan(result)
+end
+
+@testset "LeapfrogStaggeredNormConservation" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    post_step_strategy = Projector(norm2 = Norm2LeapfrogProjector())
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=100,
+        start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
+        evolution_strategy=Leapfrog(),
+        post_step_strategy
+    )
+    sim = solve(problem)
+    df = DataFrame(sim)
+    norms = real.(df.norm2)
+    @test all(n -> abs(n - norms[1]) / norms[1] < 1e-10, norms)
 end
