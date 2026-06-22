@@ -24,6 +24,8 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
 
+import Base: real, imag, complex
+
 const PACKAGE_NAME = "RimuRealTime"
 
 @doc """

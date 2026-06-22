@@ -4,16 +4,27 @@
 [`EvolutionStrategy`](@ref) for evolution using a second-order Leapfrog algorithm.
 The real and imaginary parts of the state vector are propagated on staggered time grids
 according to (P. B. Visscher, 1991):
-``R_{n+1} = R_n + \\Delta t\\,(H - s)\\,I_{n+1/2}`` and
-``I_{n+1/2} = I_{n-1/2} - \\Delta t\\,(H - s)\\,R_n``,
+```math
+R_{n+1} = R_n + Δt(H - s)I_{n+1/2}
+```
+```math
+I_{n+1/2} = I_{n-1/2} - Δt(H - s)R_n
+```
 where ``s`` is the shift.
 
-For a general complex initial state ``\\Psi_0 = R_0 + i I_0``, the staggered imaginary
-parts are initialised as
-``I_{+1/2} = I_0 - \\frac{\\Delta t}{2}(H-s)R_0`` and
-``I_{-1/2} = I_0 + \\frac{\\Delta t}{2}(H-s)R_0``.
-For a real initial state (``I_0 = 0``) this reduces to
-``I_{1/2} = -\\frac{\\Delta t}{2}(H-s)R_0``, with ``I_{-1/2}`` set by time-reversal symmetry.
+For a general complex initial state ``Ψ_0 = R_0 + i I_0``, the staggered imaginary
+parts are initialised as:
+```math
+I_{+1/2} = I_0 - \\frac{Δt}{2}(H-s)R_0
+```
+```math
+I_{-1/2} = I_0 + \\frac{Δt}{2}(H-s)R_0
+```
+For a real initial state (``I_0 = 0``) this reduces to:
+```math
+I_{1/2} = -\\frac{Δt}{2}(H-s)R_0
+```
+with ``I_{-1/2}`` set by time-reversal symmetry.
 
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
 """
@@ -28,8 +39,10 @@ parts are extracted into separate real-valued vectors, enabling real-arithmetic 
 on all staggered fields.
 
 The staggered imaginary parts are initialised from the general complex initial state
-``\\Psi_0 = R_0 + i I_0`` as
-``I_{\\pm 1/2} = I_0 \\mp \\frac{\\Delta t}{2}(H-s)R_0``.
+``Ψ_0 = R_0 + i I_0`` as:
+```math
+I_{\\pm 1/2} = I_0 \\mp \\frac{Δt}{2}(H-s)R_0
+```
 The bracketing pair ``(I_{n+1/2},\\, I_{n-1/2})`` is retained at each step.
 
 See [`QDReplicaState`](@ref).
@@ -46,76 +59,8 @@ mutable struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     current_scale::Float64
 end
 
-"""
-    Norm2LeapfrogProjector() <: Rimu.AbstractProjector
-
-Sentinel type that computes the Visscher (1991) conserved staggered two-norm
-via a specialised dispatch of `post_step_action` on [`LeapfrogSingleState`](@ref).
-The conserved norm is defined as
-``\\|\\Psi\\|_{\\rm Visscher} = \\sqrt{R_n \\cdot R_n + I_{n+1/2} \\cdot I_{n-1/2}}``,
-where ``R_n``, ``I_{n+1/2}``, and ``I_{n-1/2}`` are read directly from the fields of
-[`LeapfrogSingleState`](@ref) at each reporting step.
-Usage:
-```julia
-post_step_strategy = Projector(norm2 = Norm2LeapfrogProjector())
-```
-See [`Rimu.post_step_action`](@extref), [`Rimu.DictVectors.AbstractProjector`](@extref).
-"""
-struct Norm2LeapfrogProjector <: Rimu.AbstractProjector end
-
-function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogProjector}, s_state::LeapfrogSingleState, step)
-    R  = s_state.state_real
-    Ip = s_state.state_imag_staggered
-    Im = s_state.state_imag_staggered_previous
-    val = sqrt(max(0.0, real(dot(R, R)) + real(dot(Ip, Im))))
-    return (p.name => val,)
-end
-
-"""
-    real_part(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
-
-Extract the real part of a complex `AbstractDVec` into a new real-valued vector of the
-same concrete type, dropping zero entries.
-"""
-function real_part(v::AbstractDVec{K, Complex{T}}) where {K, T<:Real}
-    r = empty(v, K, T)          
-    for (k, val) in pairs(v)
-        x = real(val)
-        iszero(x) || (r[k] = x)
-    end
-    return r
-end
-
-"""
-    imag_part(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
-
-Extract the imaginary part of a complex `AbstractDVec` into a new real-valued vector of
-the same concrete type, dropping zero entries.
-"""
-function imag_part(v::AbstractDVec{K, Complex{T}}) where {K, T<:Real}
-    r = empty(v, K, T)
-    for (k, val) in pairs(v)
-        x = imag(val)
-        iszero(x) || (r[k] = x)
-    end
-    return r
-end
-
-"""
-    complex_dvec(v::AbstractDVec{K, T}) -> AbstractDVec{K, Complex{T}}
-
-Promote a real-valued `AbstractDVec` to its complex counterpart of the same concrete type.
-"""
-function complex_dvec(v::AbstractDVec{K, T}) where {K, T<:Real}
-    c = empty(v, K, Complex{T})
-    for (k, val) in pairs(v)
-        c[k] = Complex(val)
-    end
-    return c
-end
-
 function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian, shift, time_step) where {K, T<:Real}
-    state_real = real_part(v)      # R_0 = Re(Psi_0)
+    state_real = real(v)      # R_0 = Re(Psi_0)
 
     # Compute (H-s).R_0 for the use in the staggered initialisation
     h_r = zerovector(state_real)
@@ -124,27 +69,26 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     add!(h_r, state_real, -shift)  # h_r = (H-s).R_0
 
     # General staggered initialisation I_{±1/2} = I_0 ∓ 1/2dt.(H-s).R_0
-    i0 = imag_part(v)              # I_0 = Im(Psi_0)  (zero vector for real initial states)
-    state_imag_staggered          = zerovector(state_real)
+    i0 = imag(v) # I_0 = Im(Psi_0)  (zero vector for real initial states)
+    state_imag_staggered = zerovector(state_real)
     state_imag_staggered_previous = zerovector(state_real)
-    add!(state_imag_staggered,          i0,  1.0)
-    add!(state_imag_staggered,          h_r, -time_step / 2)  # I_{+1/2} = I_0 - 1/2dt.(H-s).R_0
-    add!(state_imag_staggered_previous, i0,  1.0)
+    add!(state_imag_staggered, i0, 1.0)
+    add!(state_imag_staggered, h_r, -time_step / 2)  # I_{+1/2} = I_0 - 1/2dt.(H-s).R_0
+    add!(state_imag_staggered_previous, i0, 1.0)
     add!(state_imag_staggered_previous, h_r, +time_step / 2)  # I_{-1/2} = I_0 + 1/2dt.(H-s).R_0
 
     h_real = zerovector(state_real)
     h_imag = zerovector(state_real)
 
     # Reconstruct Psi_0 = R_0 + i.(I_{+1/2} + I_{-1/2})/2 = R_0 + i.I_0
-    state_vector = complex_dvec(state_real)
-    add!(state_vector, state_imag_staggered,          0.5im)
+    state_vector = complex(v)
+    add!(state_vector, state_imag_staggered, 0.5im)
     add!(state_vector, state_imag_staggered_previous, 0.5im)
 
-    working_mem = working_mem_r
     return LeapfrogSingleState(
         state_vector, state_real,
         state_imag_staggered, state_imag_staggered_previous,
-        h_real, h_imag, working_mem, id, 1.0
+        h_real, h_imag, working_mem_r, id, 1.0
     )
 end
 
@@ -160,8 +104,7 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
     @assert time_step_strategy isa ConstantTimeStep "Only constant time step is currently implemented for Leapfrog."
 
     # Archive I(t+1/2dt) as the "previous" staggered value before it is overwritten below
-    zerovector!(state_imag_staggered_previous)
-    add!(state_imag_staggered_previous, state_imag_staggered, 1.0)
+    copy!(state_imag_staggered_previous, state_imag_staggered)
 
     # Advance the real part R(t+dt) = R(t) + dt.(H-s).I(t+1/2dt)
     step_stat_names, step_stat_values, working_mem, h_imag = apply_operator!(NoCompression(),
@@ -180,16 +123,16 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
     # Reconstruct the full complex state at integer time t+dt:
     # Psi(t+dt) = R(t+dt) + i.I(t+dt),  where I(t+dt) = 1/2[I(t+1/2dt) + I(t+3dt/2)]
     zerovector!(state_vector)
-    add!(state_vector, state_real,                    1.0)    # R(t+dt)
-    add!(state_vector, state_imag_staggered,          0.5im)  # + (i/2)*I(t+3dt/2)
+    add!(state_vector, state_real, 1.0)    # R(t+dt)
+    add!(state_vector, state_imag_staggered, 0.5im)  # + (i/2)*I(t+3dt/2)
     add!(state_vector, state_imag_staggered_previous, 0.5im)  # + (i/2)*I(t+1/2dt)
 
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(state_vector, 1)
         scale_names = (:walkers_before_scaling, :scale,)
-        scale!(state_vector,                  scaling_strategy.target_walkers / walkers_prev)
-        scale!(state_real,                    scaling_strategy.target_walkers / walkers_prev)
-        scale!(state_imag_staggered,          scaling_strategy.target_walkers / walkers_prev)
+        scale!(state_vector, scaling_strategy.target_walkers / walkers_prev)
+        scale!(state_real, scaling_strategy.target_walkers / walkers_prev)
+        scale!(state_imag_staggered, scaling_strategy.target_walkers / walkers_prev)
         scale!(state_imag_staggered_previous, scaling_strategy.target_walkers / walkers_prev)
         current_scale *= scaling_strategy.target_walkers / walkers_prev
         scale_stats = (walkers_prev, current_scale,)
@@ -202,6 +145,8 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
     # Compression
     comp_name = CompressionStrategy(state_vector) isa NoCompression ? () : (:len_before_compression,)
     comp_stat = compress!(state_vector)
+    compress!(state_real)
+    compress!(state_imag_staggered)
     names = (step_stat_names..., comp_name..., scale_names...)
     stats = (step_stat_values..., comp_stat..., scale_stats...)
 
@@ -226,3 +171,85 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
 
     return true
 end
+
+"""
+    Norm2LeapfrogProjector() <: Rimu.AbstractProjector
+
+Sentinel type for computing the Visscher (1991) conserved staggered two-norm
+when used in `post_step_action` with the [`Leapfrog`](@ref) evolution strategy.
+The conserved norm is
+```math
+|Ψ|_{\\rm Visscher} = \\sqrt{R_n ⋅ R_n + I_{n+1/2} ⋅ I_{n-1/2}},
+```
+where ``R_n`` is the real component at integer time step ``n`` , and 
+``I_{n \\pm 1/2}`` are the imaginary components at the 
+adjacent half-integer steps of the staggered grid.
+
+Usage:
+```julia
+post_step_strategy = Projector(norm2 = Norm2LeapfrogProjector())
+```
+See [`Rimu.post_step_action`](@extref), [`Rimu.DictVectors.AbstractProjector`](@extref).
+"""
+struct Norm2LeapfrogProjector <: Rimu.AbstractProjector end
+
+function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogProjector}, s_state::LeapfrogSingleState, step)
+    R  = s_state.state_real
+    Ip = s_state.state_imag_staggered
+    Im = s_state.state_imag_staggered_previous
+    val = sqrt(max(0.0, real(dot(R, R)) + real(dot(Ip, Im))))
+    return (p.name => val,)
+end
+
+"""
+    Base.real(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
+
+Extract the real part of a complex `AbstractDVec` into a new real-valued vector of the
+same concrete type, dropping zero entries.
+"""
+function Base.real(v::AbstractDVec{K, Complex{T}}) where {K, T<:Real}
+    r = empty(v, T)
+    for (k, val) in pairs(v)
+        x = real(val)
+        iszero(x) || (r[k] = x)
+    end
+    return r
+end
+
+"""
+    Base.imag(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
+
+Extract the imaginary part of a complex `AbstractDVec` into a new real-valued vector of
+the same concrete type, dropping zero entries.
+"""
+function Base.imag(v::AbstractDVec{K, Complex{T}}) where {K, T<:Real}
+    r = empty(v, T)
+    for (k, val) in pairs(v)
+        x = imag(val)
+        iszero(x) || (r[k] = x)
+    end
+    return r
+end
+
+"""
+    Base.complex(v::AbstractDVec{K, T}) -> AbstractDVec{K, Complex{T}}
+    Base.complex(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, Complex{T}}
+
+Promote a real-valued `AbstractDVec` to its complex counterpart of the same concrete type.
+If `v` is already complex-valued, returns a copy.
+"""
+function Base.complex(v::AbstractDVec{K, T}) where {K, T<:Real}
+    c = empty(v, Complex{T})
+    for (k, val) in pairs(v)
+        c[k] = Complex(val)
+    end
+    return c
+end
+function Base.complex(v::AbstractDVec{K, T}) where {K, T<:Complex}
+    c = empty(v, T)
+    for (k, val) in pairs(v)
+        c[k] = val
+    end
+    return c
+end
+

@@ -295,9 +295,9 @@ end
     
     @test Rimu.post_step_action(p, lf, 1)[1].second ≈ expected
 
-    lf.state_real = RimuRealTime.real_part(v)
-    lf.state_imag_staggered = RimuRealTime.real_part(v)
-    lf.state_imag_staggered_previous = -10.0 * RimuRealTime.real_part(v)
+    lf.state_real = RimuRealTime.real(v)
+    lf.state_imag_staggered = RimuRealTime.real(v)
+    lf.state_imag_staggered_previous = -10.0 * RimuRealTime.real(v)
     
     result = Rimu.post_step_action(p, lf, 2)[1].second
     @test result >= 0.0
