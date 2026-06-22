@@ -14,6 +14,7 @@ QDAlgorithm
 DiscretizedEvolution
 QDReplicaState
 QDSingleState
+LeapfrogSingleState
 EulerSingleState
 RKSingleState
 PECSingleState
