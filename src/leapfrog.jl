@@ -5,9 +5,7 @@
 The real and imaginary parts of the state vector are propagated on staggered time grids
 according to (P. B. Visscher, 1991):
 ```math
-R_{n+1} = R_n + Δt(H - s)I_{n+1/2}
-```
-```math
+R_{n+1} = R_n + Δt(H - s)I_{n+1/2}\\\\
 I_{n+1/2} = I_{n-1/2} - Δt(H - s)R_n
 ```
 where ``s`` is the shift.
@@ -15,9 +13,7 @@ where ``s`` is the shift.
 For a general complex initial state ``Ψ_0 = R_0 + i I_0``, the staggered imaginary
 parts are initialised as:
 ```math
-I_{+1/2} = I_0 - \\frac{Δt}{2}(H-s)R_0
-```
-```math
+I_{+1/2} = I_0 - \\frac{Δt}{2}(H-s)R_0\\\\
 I_{-1/2} = I_0 + \\frac{Δt}{2}(H-s)R_0
 ```
 For a real initial state (``I_0 = 0``) this reduces to:
