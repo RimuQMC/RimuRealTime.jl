@@ -59,7 +59,7 @@ Usage:
 ```julia
 post_step_strategy = Projector(norm2 = Norm2LeapfrogProjector())
 ```
-See [`Rimu.post_step_action`](@extref), [`Rimu.AbstractProjector`](@extref).
+See [`Rimu.post_step_action`](@extref), [`Rimu.DictVectors.AbstractProjector`](@extref).
 """
 struct Norm2LeapfrogProjector <: Rimu.AbstractProjector end
 
