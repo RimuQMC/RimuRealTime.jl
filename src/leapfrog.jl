@@ -14,6 +14,8 @@ parts are initialised as
 ``I_{-1/2} = I_0 + \\frac{\\Delta t}{2}(H-s)R_0``.
 For a real initial state (``I_0 = 0``) this reduces to
 ``I_{1/2} = -\\frac{\\Delta t}{2}(H-s)R_0``, with ``I_{-1/2}`` set by time-reversal symmetry.
+
+Only [`Rimu.ConstantTimeStep`](@extref) is supported.
 """
 Base.@kwdef struct Leapfrog <: EvolutionStrategy end
 
