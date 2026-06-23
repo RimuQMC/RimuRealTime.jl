@@ -21,7 +21,7 @@ PECSingleState
 ProductSingleState
 TimeStepParameters
 advance!
-Base.real
-Base.imag
-Base.complex
+dvec_real
+dvec_imag
+dvec_complex
 ```
