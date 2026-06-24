@@ -5,6 +5,7 @@ Abstract type for time evolution strategies. Passed as a parameter to
 
 ## Implemented strategies:
 
+* [`Leapfrog`](@ref)
 * [`PEC`](@ref)
 * [`RungeKutta`](@ref)
 * [`Euler`](@ref)

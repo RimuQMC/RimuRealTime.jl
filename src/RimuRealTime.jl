@@ -24,6 +24,7 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
 
+
 const PACKAGE_NAME = "RimuRealTime"
 
 @doc """
@@ -40,6 +41,7 @@ include("clock.jl")
 include("strategies_and_params.jl")
 include("quantum_dynamics_problem.jl")
 include("qmc_states.jl")
+include("leapfrog.jl")
 include("pec.jl")
 include("runge_kutta.jl")
 include("euler.jl")
@@ -51,8 +53,10 @@ export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
 export time_index, fock_address, num_steps, time_evolution_operator, starting_state
 export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
-export EvolutionStrategy, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
+export EvolutionStrategy, Leapfrog, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
+export Norm2LeapfrogProjector
+export dvec_complex, dvec_real, dvec_imag
 
 end

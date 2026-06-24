@@ -1,7 +1,12 @@
 using RimuRealTime
 using Documenter
+using DocumenterInterLinks
 
 DocMeta.setdocmeta!(RimuRealTime, :DocTestSetup, :(using RimuRealTime); recursive=true)
+
+links = InterLinks(
+    "Rimu" => "https://rimuqmc.github.io/Rimu.jl/stable/objects.inv"
+)
 
 makedocs(;
     modules=[RimuRealTime],
@@ -21,9 +26,13 @@ makedocs(;
         ],
         "API"   => "api.md",
     ],
+    plugins = [links]
 )
 
 deploydocs(
     repo = "github.com/RimuQMC/RimuRealTime.jl.git",
     push_preview = true,
 )
+
+
+

@@ -39,6 +39,7 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
-      # - uses: julia-actions/julia-uploadcoveralls@v1
-      #   env:
-      #     COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+      - uses: julia-actions/julia-uploadcoveralls@v1
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        if: ${{ (matrix.version == '1') && (matrix.os == 'ubuntu-latest') }}
