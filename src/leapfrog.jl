@@ -2,13 +2,17 @@
     Leapfrog() <: EvolutionStrategy
 
 [`EvolutionStrategy`](@ref) for evolution using a second-order Leapfrog algorithm.
+Pass `Leapfrog()` to [`QuantumDynamicsProblem`](@ref) with the keyword 
+`evolution_strategy` to enable this algorithm.
 The real and imaginary parts of the state vector are propagated on staggered time grids
-according to (P. B. Visscher, 1991):
+according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415)::
 ```math
 R_{n+1} = R_n + Δt(H - S)I_{n+1/2}\\\\
 I_{n+1/2} = I_{n-1/2} - Δt(H - S)R_n
 ```
-where ``S`` is the shift.
+where ``S`` is the shift. Note that [`Norm2LeapfrogProjector`](@ref) is available as a
+specialised [`Rimu.PostStepStrategy`](@extref) to compute a conserved 2-norm for 
+`Leapfrog` time evolution.
 
 For a general complex initial state ``Ψ_0 = R_0 + i I_0``, the staggered imaginary
 parts are initialised as:
@@ -17,8 +21,10 @@ I_{+1/2} = I_0 - \\frac{Δt}{2}(H-S)R_0\\\\
 I_{-1/2} = I_0 + \\frac{Δt}{2}(H-S)R_0
 ```
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
+
+See also [`Norm2LeapfrogProjector`](@ref), [`LeapfrogSingleState`](@ref).
 """
-Base.@kwdef struct Leapfrog <: EvolutionStrategy end
+struct Leapfrog <: EvolutionStrategy end
 
 """
     LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step) <: QDSingleState
@@ -35,7 +41,7 @@ I_{\\pm 1/2} = I_0 \\mp \\frac{Δt}{2}(H-S)R_0
 ```
 The bracketing pair ``(I_{n+1/2},\\, I_{n-1/2})`` is retained at each step.
 
-See [`QDReplicaState`](@ref).
+See [`Leapfrog`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
 """
 mutable struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     state_vector::CV                  # the current, valid complex reconstructed state Psi(t) = R(t) + i.I(t)
@@ -192,7 +198,7 @@ function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogProjector}, s_stat
 end
 
 """
-    Base.real(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
+    dvec_real(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
 
 Extract the real part of a complex `AbstractDVec` into a new real-valued vector of the
 same concrete type, dropping zero entries.
@@ -208,7 +214,7 @@ end
 
 
 """
-    Base.imag(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
+    dvec_imag(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, T}
 
 Extract the imaginary part of a complex `AbstractDVec` into a new real-valued vector of
 the same concrete type, dropping zero entries.
@@ -223,8 +229,8 @@ function dvec_imag(v::AbstractDVec{K, Complex{T}}) where {K, T<:Real}
 end
 
 """
-    Base.complex(v::AbstractDVec{K, T}) -> AbstractDVec{K, Complex{T}}
-    Base.complex(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, Complex{T}}
+    dvec_complex(v::AbstractDVec{K, T}) -> AbstractDVec{K, Complex{T}}
+    dvec_complex(v::AbstractDVec{K, Complex{T}}) -> AbstractDVec{K, Complex{T}}
 
 Promote a real-valued `AbstractDVec` to its complex counterpart of the same concrete type.
 If `v` is already complex-valued, returns a copy.
