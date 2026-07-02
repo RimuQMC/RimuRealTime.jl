@@ -43,7 +43,6 @@ The bracketing pair ``(I_{n+1/2},\\, I_{n-1/2})`` is retained at each step.
 
 See [`Leapfrog`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
 """
-
 struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     state_vector::CV # the current, valid complex reconstructed state Psi(t) = R(t) + i.I(t)
     state_real::V # real part R(t), on the integer time grid
