@@ -295,9 +295,9 @@ end
 
     @test Rimu.post_step_action(p, lf, 1)[1].second ≈ expected
 
-    lf.state_real = RimuRealTime.dvec_real(v)
-    lf.state_imag_staggered = RimuRealTime.dvec_real(v)
-    lf.state_imag_staggered_previous = -10.0 * RimuRealTime.dvec_real(v)
+    copy!(lf.state_real, v)
+    copy!(lf.state_imag_staggered, v)
+    copy!(lf.state_imag_staggered_previous, -10.0 * v)
 
     result = Rimu.post_step_action(p, lf, 2)[1].second
     @test result >= 0.0
@@ -324,3 +324,4 @@ end
     norms = real.(df.norm2)
     @test all(n -> abs(n - norms[1]) / norms[1] < 1e-10, norms)
 end
+
