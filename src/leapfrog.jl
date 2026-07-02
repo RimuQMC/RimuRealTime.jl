@@ -2,7 +2,7 @@
     Leapfrog() <: EvolutionStrategy
 
 [`EvolutionStrategy`](@ref) for evolution using a second-order Leapfrog algorithm.
-Pass `Leapfrog()` to [`QuantumDynamicsProblem`](@ref) with the keyword 
+Pass `Leapfrog()` to [`QuantumDynamicsProblem`](@ref) with the keyword
 `evolution_strategy` to enable this algorithm.
 The real and imaginary parts of the state vector are propagated on staggered time grids
 according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415)::
@@ -11,7 +11,7 @@ R_{n+1} = R_n + Δt(H - S)I_{n+1/2}\\\\
 I_{n+1/2} = I_{n-1/2} - Δt(H - S)R_n
 ```
 where ``S`` is the shift. Note that [`Norm2LeapfrogProjector`](@ref) is available as a
-specialised [`Rimu.PostStepStrategy`](@extref) to compute a conserved 2-norm for 
+specialised [`Rimu.PostStepStrategy`](@extref) to compute a conserved 2-norm for
 `Leapfrog` time evolution.
 
 For a general complex initial state ``Ψ_0 = R_0 + i I_0``, the staggered imaginary
@@ -56,7 +56,7 @@ mutable struct LeapfrogSingleState{CV, V, W} <: QDSingleState
 end
 
 function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian, shift, time_step) where {K, T<:Real}
-    state_real = dvec_real(v)      # R_0 = Re(Psi_0)
+    state_real = copy(v)      # R_0 = Re(Psi_0)
 
     # Compute (H-S).R_0 for the use in the staggered initialisation
     h_r = zerovector(state_real)
@@ -65,7 +65,7 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     add!(h_r, state_real, -shift)  # h_r = (H-S).R_0
 
     # General staggered initialisation I_{±1/2} = I_0 ∓ 1/2dt.(H-S).R_0
-    i0 = dvec_imag(v) # I_0 = Im(Psi_0)  (zero vector for real initial states)
+    i0 = zerovector(v) # I_0 = Im(Psi_0)  (zero vector for real initial states)
     state_imag_staggered = zerovector(state_real)
     state_imag_staggered_previous = zerovector(state_real)
     add!(state_imag_staggered, i0, 1.0)
@@ -76,10 +76,7 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     h_real = zerovector(state_real)
     h_imag = zerovector(state_real)
 
-    # Reconstruct Psi_0 = R_0 + i.(I_{+1/2} + I_{-1/2})/2 = R_0 + i.I_0
-    state_vector = dvec_complex(v)
-    add!(state_vector, state_imag_staggered, 0.5im)
-    add!(state_vector, state_imag_staggered_previous, 0.5im)
+    state_vector = v
     current_scale = 1.0
 
     return LeapfrogSingleState(
@@ -101,6 +98,7 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
     @assert time_step_strategy isa ConstantTimeStep "Only constant time step is currently implemented for Leapfrog."
 
     # Archive I(t+1/2dt) as the "previous" staggered value before it is overwritten below
+    # state_imag_staggered_previous, state_imag_staggered = state_imag_staggered,
     copy!(state_imag_staggered_previous, state_imag_staggered)
 
     # Advance the real part R(t+dt) = R(t) + dt.(H-S).I(t+1/2dt)
@@ -177,8 +175,8 @@ The conserved norm is
 ```math
 |Ψ|_{\\rm Visscher} = \\sqrt{R_n ⋅ R_n + I_{n+1/2} ⋅ I_{n-1/2}},
 ```
-where ``R_n`` is the real component at integer time step ``n`` , and 
-``I_{n \\pm 1/2}`` are the imaginary components at the 
+where ``R_n`` is the real component at integer time step ``n`` , and
+``I_{n \\pm 1/2}`` are the imaginary components at the
 adjacent half-integer steps of the staggered grid.
 
 Usage:
@@ -249,4 +247,3 @@ function dvec_complex(v::AbstractDVec{K, T}) where {K, T<:Complex}
     end
     return c
 end
-

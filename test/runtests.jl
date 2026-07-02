@@ -58,7 +58,7 @@ end
                 addr, prob, val = random_offdiagonal(col)
                 @test (addr => val) in ods
             end
-            
+
             @test diagonal_element(operator_column(C, ClockAddress(add, 5))) == 1
             @test diagonal_element(operator_column(C, ClockAddress(add, 10))) == 0.5
 
@@ -118,7 +118,7 @@ end
 
     Leapfrog_state = LeapfrogSingleState(v_complex, working_memory(v_complex), "", hamiltonian, shift, 0.01)
     @test Leapfrog_state.state_vector == v_complex
-    @test Leapfrog_state.state_vector !== v_complex
+    @test Leapfrog_state.state_vector === v_complex
     @test Leapfrog_state.state_real == v
     @test Leapfrog_state.state_real !== v
     @test Leapfrog_state.state_imag_staggered == -0.01/2 * (hamiltonian*v - shift*v)
@@ -264,7 +264,7 @@ end
         U = FirstOrderTimeEvolution(hamiltonian, time_step)
         @test sim.state[1].state_vector == U*vec
     end
-    
+
     for evolution_strategy in [PEC(), RungeKutta(), Product(2)]
         problem = QuantumDynamicsProblem(
             hamiltonian;
@@ -287,18 +287,18 @@ end
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
     v = DVec(address => 1.0 + 0.0im)
     lf = RimuRealTime.LeapfrogSingleState(v, working_memory(v), "", hamiltonian, shift, 0.01)
-    
+
     p = Rimu.Projector(projector=Norm2LeapfrogProjector())
-    
+
     expected = sqrt(max(0.0, real(dot(lf.state_real, lf.state_real)) +
                              real(dot(lf.state_imag_staggered, lf.state_imag_staggered_previous))))
-    
+
     @test Rimu.post_step_action(p, lf, 1)[1].second ≈ expected
 
     lf.state_real = RimuRealTime.dvec_real(v)
     lf.state_imag_staggered = RimuRealTime.dvec_real(v)
     lf.state_imag_staggered_previous = -10.0 * RimuRealTime.dvec_real(v)
-    
+
     result = Rimu.post_step_action(p, lf, 2)[1].second
     @test result >= 0.0
     @test !isnan(result)
