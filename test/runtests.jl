@@ -325,3 +325,47 @@ end
     @test all(n -> abs(n - norms[1]) / norms[1] < 1e-10, norms)
 end
 
+@testset "LeapfrogDynamicScaling" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    initial_walkers = 100
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=10,
+        start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
+        evolution_strategy=Leapfrog(),
+        scaling_strategy=DynamicScaling(initial_walkers)
+    )
+    sim = solve(problem)
+    @test sim.success == true
+
+    s_state = sim.state[1]
+    @test s_state.current_scale[] != 1.0
+    @test norm(s_state.state_vector, 1) ≈ initial_walkers rtol=1e-8
+end
+
+@testset "LeapfrogDeadPopulation" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=10,
+        start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
+        evolution_strategy=Leapfrog()
+    )
+    sim = init(problem)
+    s_state = sim.state[1]
+    zerovector!(s_state.state_real)
+    zerovector!(s_state.state_imag_staggered)
+    zerovector!(s_state.state_imag_staggered_previous)
+
+    @test_logs (:error, r"is dead\. Aborting\.") match_mode=:any solve!(sim)
+end
