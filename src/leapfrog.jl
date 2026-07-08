@@ -48,9 +48,9 @@ struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     state_real::V # real part R(t), on the integer time grid
     state_imag_staggered::V # imaginary part I(t+1/2dt), on the staggered grid
     state_imag_staggered_previous::V # imaginary part I(t-1/2dt), retained from the previous step
-    h_real::Ref{V} # scratch vector: (H-S).R                     
-    h_imag::Ref{V} # scratch vector: (H-S).I
-    working_mem::Ref{W}
+    h_real::V # scratch vector: (H-S).R                     
+    h_imag::V # scratch vector: (H-S).I
+    working_mem::W
     id::String
     current_scale::Ref{Float64}
 end
@@ -82,7 +82,7 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     return LeapfrogSingleState(
         state_vector, state_real,
         state_imag_staggered, state_imag_staggered_previous,
-        Ref(h_real), Ref(h_imag), Ref(working_mem_r), id, Ref(current_scale)
+        h_real, h_imag, working_mem_r, id, Ref(current_scale)
     )
 end
 
@@ -102,18 +102,18 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
     copy!(state_imag_staggered_previous, state_imag_staggered)
 
     # Advance the real part R(t+dt) = R(t) + dt.(H-S).I(t+1/2dt)
-    step_stat_names, step_stat_values, working_mem[], h_imag[] = apply_operator!(NoCompression(),
-        working_mem[], h_imag[], state_imag_staggered, hamiltonian
+    step_stat_names, step_stat_values, working_mem, h_imag = apply_operator!(NoCompression(),
+        working_mem, h_imag, state_imag_staggered, hamiltonian
     )
-    add!(h_imag[], state_imag_staggered, -shift) # h_imag = (H-S).I(t+1/2dt)
-    add!(state_real, h_imag[], time_step) # R(t+dt) = R(t) + dt.h_imag
+    add!(h_imag, state_imag_staggered, -shift) # h_imag = (H-S).I(t+1/2dt)
+    add!(state_real, h_imag, time_step) # R(t+dt) = R(t) + dt.h_imag
 
     # Advance the imaginary part: I(t+3dt/2) = I(t+1/2dt) - dt.(H-S).R(t+dt)
-    step_stat_names, step_stat_values, working_mem[], h_real[] = apply_operator!(NoCompression(),
-        working_mem[], h_real[], state_real, hamiltonian
+    step_stat_names, step_stat_values, working_mem, h_real = apply_operator!(NoCompression(),
+        working_mem, h_real, state_real, hamiltonian
     )
-    add!(h_real[], state_real, -shift) # h_real = (H-S).R(t+dt)
-    add!(state_imag_staggered, h_real[], -time_step)  # I(t+3dt/2) = I(t+1/2dt) - dt.h_real
+    add!(h_real, state_real, -shift) # h_real = (H-S).R(t+dt)
+    add!(state_imag_staggered, h_real, -time_step)  # I(t+3dt/2) = I(t+1/2dt) - dt.h_real
 
     # Reconstruct the full complex state at integer time t+dt:
     # Psi(t+dt) = R(t+dt) + i.I(t+dt),  where I(t+dt) = 1/2[I(t+1/2dt) + I(t+3dt/2)]

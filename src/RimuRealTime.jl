@@ -57,6 +57,5 @@ export EvolutionStrategy, Leapfrog, PEC, RungeKutta, Euler, Product, num_replica
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 export Norm2LeapfrogProjector
-export dvec_complex, dvec_real, dvec_imag
 
 end
