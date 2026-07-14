@@ -4,8 +4,18 @@
 Pass `ExactEvolution()` to [`QuantumDynamicsProblem`](@ref) with the keyword
 `evolution_strategy` to enable this algorithm.
 The state is updated every time step according to ``v_{n+1} = e^{-i H dt} v_n``,
-where the matrix exponential is computed via a Krylov subspace approximation. This method
-requires only a single application of the matrix exponential per time step.
+where the matrix exponential is computed via a Krylov subspace approximation using
+[`KrylovKit.exponentiate`](@extref). This method applies the matrix exponential once per time step.
+
+# Keyword arguments
+
+- `krylovdim = 30`
+- `tol = 1e-12`
+- `maxiter = 100`
+- `eager = true`
+- `verbosity = 0`
+
+See [`KrylovKit.exponentiate`](@extref) for details on the keyword arguments.
 
 Requires a deterministic style: use `style = IsDeterministic{ComplexF64}()` when
 constructing the [`QuantumDynamicsProblem`](@ref).

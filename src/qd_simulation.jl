@@ -36,13 +36,6 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         reporting_strategy, post_step_strategy,
         metadata, initiator, random_seed = problem
 
-    if algorithm.evolution_strategy isa ExactEvolution && !(style isa Rimu.StochasticStyles.IsDeterministic)
-    throw(ArgumentError(
-        "ExactEvolution requires a deterministic style, " *
-        "but got $(typeof(style)). Use `style = IsDeterministic()`."
-    ))
-    end
-
     reporting_strategy = refine_reporting_strategy(reporting_strategy)
 
     n_replicas = num_replicas(replica_strategy)
