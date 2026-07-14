@@ -9,6 +9,7 @@ Abstract type for time evolution strategies. Passed as a parameter to
 * [`RungeKutta`](@ref)
 * [`Euler`](@ref)
 * [`Product`](@ref)
+* [`ExactEvolution`](@ref)
 """
 abstract type EvolutionStrategy end
 
