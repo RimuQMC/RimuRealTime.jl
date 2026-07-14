@@ -6,7 +6,8 @@ using OrderedCollections: OrderedCollections, LittleDict
 using Parameters: Parameters, @pack!, @unpack
 using ProgressLogging: ProgressLogging, @logprogress, @withprogress
 using Random: RandomDevice
-using KrylovKit: KrylovKit, exponentiate
+using LinearAlgebra: ishermitian
+using KrylovKit: exponentiate
 using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown,
     AdjointUnknown, AllOverlaps, CompressionStrategy, ConstantTimeStep, DVec, Hamiltonians,

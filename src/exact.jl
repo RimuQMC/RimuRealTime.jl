@@ -16,7 +16,6 @@ Base.@kwdef struct ExactEvolution <: EvolutionStrategy
     krylovdim::Int = 30      # Dimension of the Krylov subspace
     tol::Float64 = 1e-12     # Tolerance for the Krylov approximation
     maxiter::Int = 100       # Maximum number of Krylov subspace iterations
-    hermitian::Bool = false  # Whether the Hamiltonian is Hermitian
     eager::Bool = true       # Whether to use the eager variant
     verbosity::Int = 0       # Verbosity level
 end
@@ -50,7 +49,7 @@ Krylov subspace approximation, and write data to the `report`.
 function advance!(report, state::QDReplicaState, s_state::ExactSingleState)
 
     @unpack state_vector, working_mem, id, algorithm = s_state
-    @unpack krylovdim, tol, maxiter, hermitian, eager, verbosity = algorithm
+    @unpack krylovdim, tol, maxiter, eager, verbosity = algorithm
     @unpack time_step_parameters, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
     step = state.step[]
@@ -64,13 +63,10 @@ function advance!(report, state::QDReplicaState, s_state::ExactSingleState)
         return y
     end
 
-    # scale the tolerance by the time step for consistent accuracy
-    krylov_tol = tol / abs(time_step)
-
     # exponentiate: v_{n+1} = exp(-i * H * dt) * v_n
     state_vector, info = exponentiate(
         hamiltonian_action, -im * time_step, state_vector;
-        krylovdim, tol=krylov_tol, maxiter, ishermitian=hermitian, eager, verbosity,
+        krylovdim, tol=tol, maxiter, ishermitian=ishermitian(hamiltonian), eager, verbosity,
     )
     working_mem = wm[]
 
