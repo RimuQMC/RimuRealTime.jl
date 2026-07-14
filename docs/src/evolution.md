@@ -10,6 +10,7 @@ Euler
 RungeKutta
 PEC
 Product
+ExactEvolution
 FirstOrderTimeEvolution
 NthOrderTimeEvolution
 ExponentialSampler

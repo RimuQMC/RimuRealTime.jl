@@ -36,6 +36,13 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         reporting_strategy, post_step_strategy,
         metadata, initiator, random_seed = problem
 
+    if algorithm.evolution_strategy isa ExactEvolution && !(style isa Rimu.StochasticStyles.IsDeterministic)
+    throw(ArgumentError(
+        "ExactEvolution requires a deterministic style, " *
+        "but got $(typeof(style)). Use `style = IsDeterministic()`."
+    ))
+    end
+
     reporting_strategy = refine_reporting_strategy(reporting_strategy)
 
     n_replicas = num_replicas(replica_strategy)
@@ -77,7 +84,9 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         else
             "_r$(i)"
         end
-        if algorithm.evolution_strategy isa PEC
+        if algorithm.evolution_strategy isa ExactEvolution
+            ExactSingleState(v, wm, id, algorithm.evolution_strategy)
+        elseif algorithm.evolution_strategy isa PEC
             PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa RungeKutta
             RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)
