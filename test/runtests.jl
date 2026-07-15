@@ -114,6 +114,7 @@ end
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
 
     v = DVec(address => 1.0)
+    v_stochastic = DVec(address => 1.0; style=IsDynamicSemistochastic())
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
     @test PEC_state.state_vector == v
     @test PEC_state.state_vector !== v
@@ -138,6 +139,8 @@ end
     Exact_state2 = ExactSingleState(v, working_memory(v), "", ExactEvolution(krylovdim=10, tol=1e-8))
     @test Exact_state2.algorithm.krylovdim == 10
     @test Exact_state2.algorithm.tol == 1e-8
+
+    @test_throws ArgumentError ExactSingleState(v_stochastic, working_memory(v_stochastic), "")
 end
 
 @testset "QuantumDynamicsProblem" begin
@@ -298,4 +301,13 @@ end
     sim2 = solve(problem2)
 
     @test sim1.state[1].state_vector ≈ sim2.state[1].state_vector atol=1e-9
+
+    problem_default_style = QuantumDynamicsProblem(
+    hamiltonian;
+    time_step,
+    last_step=1,
+    initial_walkers=1,
+    evolution_strategy=ExactEvolution()
+    )
+    @test problem_default_style.style isa IsDeterministic{ComplexF64}
 end
