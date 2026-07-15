@@ -46,6 +46,9 @@ mutable struct ExactSingleState{V,W} <: QDSingleState
     working_mem::W            # working memory for Hamiltonian application
     id::String                # identifier for the state
     algorithm::ExactEvolution # parameters for the Krylov exponentiation
+    function ExactSingleState{V,W}(state_vector, working_mem, id::String, algorithm::ExactEvolution) where {V,W}
+        return new{V,W}(state_vector, working_mem, id, algorithm)
+    end
 end
 
 function ExactSingleState(v, wm, id::String, algorithm::ExactEvolution=ExactEvolution())
