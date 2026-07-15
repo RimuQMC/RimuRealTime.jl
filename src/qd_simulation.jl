@@ -77,7 +77,9 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         else
             "_r$(i)"
         end
-        if algorithm.evolution_strategy isa PEC
+        if algorithm.evolution_strategy isa ExactEvolution
+            ExactSingleState(v, wm, id, algorithm.evolution_strategy)
+        elseif algorithm.evolution_strategy isa PEC
             PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa RungeKutta
             RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)

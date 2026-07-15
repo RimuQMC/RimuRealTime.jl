@@ -9,9 +9,11 @@ Abstract type for time evolution strategies. Passed as a parameter to
 * [`RungeKutta`](@ref)
 * [`Euler`](@ref)
 * [`Product`](@ref)
+* [`ExactEvolution`](@ref)
 """
 abstract type EvolutionStrategy end
 
+Rimu.default_style(::EvolutionStrategy) = IsDynamicSemistochastic{ComplexF64}()
 """
     ScalingStrategy
 Abstract type for scaling strategies used to control the walker number. Passed as a

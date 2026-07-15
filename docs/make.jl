@@ -1,7 +1,12 @@
 using RimuRealTime
 using Documenter
+using DocumenterInterLinks
 
 DocMeta.setdocmeta!(RimuRealTime, :DocTestSetup, :(using RimuRealTime); recursive=true)
+
+links = InterLinks(
+    "Krylovkit" => "https://jutho.github.io/KrylovKit.jl/stable/objects.inv"
+)
 
 makedocs(;
     modules=[RimuRealTime],
@@ -21,6 +26,7 @@ makedocs(;
         ],
         "API"   => "api.md",
     ],
+    plugins = [links]
 )
 
 deploydocs(
