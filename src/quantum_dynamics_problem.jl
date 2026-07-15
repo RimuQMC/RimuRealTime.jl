@@ -163,27 +163,7 @@ function QuantumDynamicsProblem(
     end
 
     if isnothing(style)
-        if algorithm.evolution_strategy isa ExactEvolution
-            style = Rimu.StochasticStyles.IsDeterministic{ComplexF64}()
-        else
-            style = IsDynamicSemistochastic{ComplexF64}()
-        end
-    end
-
-    if algorithm.evolution_strategy isa ExactEvolution && !(style isa Rimu.StochasticStyles.IsDeterministic)
-        throw(ArgumentError(
-            "ExactEvolution requires a deterministic style; got $(typeof(style)). " *
-            "Use `style = IsDeterministic()`."
-        ))
-    end
-
-    if algorithm.evolution_strategy isa ExactEvolution && start_at isa AbstractDVec
-        if !(StochasticStyle(start_at) isa Rimu.StochasticStyles.IsDeterministic)
-            throw(ArgumentError(
-                "ExactEvolution requires a deterministic starting vector, " *
-                "but got $(typeof(StochasticStyle(start_at)))."
-            ))
-        end
+        style = Rimu.default_style(algorithm.evolution_strategy)
     end
 
     n_replicas = num_replicas(replica_strategy)

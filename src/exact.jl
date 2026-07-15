@@ -9,13 +9,14 @@ where the matrix exponential is computed via a Krylov subspace approximation usi
 
 # Keyword arguments
 
+The following keyword argument and defaults are applied. See [`KrylovKit.exponentiate`](@extref) 
+for a detailed description.
+
 - `krylovdim = 30`
 - `tol = 1e-12`
 - `maxiter = 100`
 - `eager = true`
 - `verbosity = 0`
-
-See [`KrylovKit.exponentiate`](@extref) for details on the keyword arguments.
 
 Requires a deterministic style: use `style = IsDeterministic{ComplexF64}()` when
 constructing the [`QuantumDynamicsProblem`](@ref).
@@ -29,6 +30,8 @@ Base.@kwdef struct ExactEvolution <: EvolutionStrategy
     eager::Bool = true       # Whether to use the eager variant
     verbosity::Int = 0       # Verbosity level
 end
+
+Rimu.default_style(::ExactEvolution) = Rimu.StochasticStyles.IsDeterministic{ComplexF64}()
 
 """
     ExactSingleState(v, working_memory, id, algorithm) <: QDSingleState
@@ -45,10 +48,23 @@ mutable struct ExactSingleState{V,W} <: QDSingleState
     algorithm::ExactEvolution # parameters for the Krylov exponentiation
 end
 
-function ExactSingleState(v, wm, id, algorithm::ExactEvolution=ExactEvolution())
+function ExactSingleState(v, wm, id::String, algorithm::ExactEvolution=ExactEvolution())
+    if !(StochasticStyle(v) isa Rimu.StochasticStyles.IsDeterministic)
+        throw(ArgumentError(
+            "ExactEvolution requires a deterministic stochastic style, but got " *
+            "$(typeof(StochasticStyle(v))). Pass `style = IsDeterministic()` to " *
+            "`QuantumDynamicsProblem`, or provide a `start_at` AbstractDVec that already " *
+            "has a deterministic style."
+        ))
+    end
     state_vector = deepcopy(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
-    return ExactSingleState(state_vector, working_mem, id, algorithm)
+    return ExactSingleState{typeof(state_vector),typeof(working_mem)}(
+        state_vector,
+        working_mem,
+        id,
+        algorithm,
+    )
 end
 
 """
