@@ -79,6 +79,8 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         end
         if algorithm.evolution_strategy isa Leapfrog
             LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step)
+        elseif algorithm.evolution_strategy isa ExactEvolution
+            ExactSingleState(v, wm, id, algorithm.evolution_strategy)
         elseif algorithm.evolution_strategy isa PEC
             PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
         elseif algorithm.evolution_strategy isa RungeKutta

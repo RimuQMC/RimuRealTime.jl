@@ -19,6 +19,7 @@ EulerSingleState
 RKSingleState
 PECSingleState
 ProductSingleState
+ExactSingleState
 TimeStepParameters
 advance!
 ```

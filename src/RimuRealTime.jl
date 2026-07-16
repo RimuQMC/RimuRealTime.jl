@@ -6,6 +6,8 @@ using OrderedCollections: OrderedCollections, LittleDict
 using Parameters: Parameters, @pack!, @unpack
 using ProgressLogging: ProgressLogging, @logprogress, @withprogress
 using Random: RandomDevice
+using LinearAlgebra: ishermitian
+using KrylovKit: exponentiate
 using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown,
     AdjointUnknown, AllOverlaps, CompressionStrategy, ConstantTimeStep, DVec, Hamiltonians,
@@ -42,6 +44,7 @@ include("strategies_and_params.jl")
 include("quantum_dynamics_problem.jl")
 include("qmc_states.jl")
 include("leapfrog.jl")
+include("exact.jl")
 include("pec.jl")
 include("runge_kutta.jl")
 include("euler.jl")
@@ -53,7 +56,7 @@ export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
 export time_index, fock_address, num_steps, time_evolution_operator, starting_state
 export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
-export EvolutionStrategy, Leapfrog, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
+export EvolutionStrategy, ExactEvolution, Leapfrog, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 export Norm2LeapfrogProjector

@@ -5,7 +5,8 @@ using DocumenterInterLinks
 DocMeta.setdocmeta!(RimuRealTime, :DocTestSetup, :(using RimuRealTime); recursive=true)
 
 links = InterLinks(
-    "Rimu" => "https://rimuqmc.github.io/Rimu.jl/stable/objects.inv"
+    "Rimu" => "https://rimuqmc.github.io/Rimu.jl/stable/objects.inv",
+    "Krylovkit" => "https://jutho.github.io/KrylovKit.jl/stable/objects.inv"
 )
 
 makedocs(;
