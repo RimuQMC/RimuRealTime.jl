@@ -53,7 +53,7 @@ function QDSimulation(problem::QuantumDynamicsProblem)
 
     if initial_time_step_parameters isa NamedTuple
         @unpack abs_time_step, alpha = initial_time_step_parameters
-        if !iszero(alpha) || algorithm.time_step_strategy isa WalkerControl
+        if !iszero(alpha) || algorithm[1].time_step_strategy isa WalkerControl
             K = ComplexF64
         else
             K = Float64
@@ -77,28 +77,28 @@ function QDSimulation(problem::QuantumDynamicsProblem)
         else
             "_r$(i)"
         end
-        if algorithm.evolution_strategy isa Leapfrog
+        if algorithm[i].evolution_strategy isa Leapfrog
             LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step)
-        elseif algorithm.evolution_strategy isa ExactEvolution
-            ExactSingleState(v, wm, id, algorithm.evolution_strategy)
-        elseif algorithm.evolution_strategy isa PEC
-            PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
-        elseif algorithm.evolution_strategy isa RungeKutta
-            RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)
-        elseif algorithm.evolution_strategy isa Euler
+        elseif algorithm[i].evolution_strategy isa ExactEvolution
+            ExactSingleState(v, wm, id, algorithm[i].evolution_strategy)
+        elseif algorithm[i].evolution_strategy isa PEC
+            PECSingleState(v, wm, id, hamiltonian, shift, algorithm[i].evolution_strategy.damping)
+        elseif algorithm[i].evolution_strategy isa RungeKutta
+            RKSingleState(v, wm, id, hamiltonian, time_step, algorithm[i].evolution_strategy.damping)
+        elseif algorithm[i].evolution_strategy isa Euler
             EulerSingleState(v, wm, id, hamiltonian, time_step)
-        elseif algorithm.evolution_strategy isa Product
-            ProductSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.order)
+        elseif algorithm[i].evolution_strategy isa Product
+            ProductSingleState(v, wm, id, hamiltonian, time_step, algorithm[i].evolution_strategy.order)
         end
     end
-    @assert single_states isa NTuple{n_replicas, <:QDSingleState}
+    @assert single_states isa Tuple{Vararg{QDSingleState,n_replicas}}
 
     state = QDReplicaState(
         single_states,
         time_step_parameters,
         shift,
         hamiltonian,
-        algorithm,
+        algorithm[1],
         Ref(simulation_plan.starting_step),
         simulation_plan,
         reporting_strategy,
@@ -212,7 +212,7 @@ function CommonSolve.step!(sm::QDSimulation)
     if step[] % reporting_interval(state.reporting_strategy) == 0
         report!(reporting_strategy, step[], report, time_step_stats)
 
-        replica_names, replica_values = replica_stats(replica_strategy, single_states)
+        replica_names, replica_values = replica_stats(replica_strategy, NTuple{length(single_states),QDSingleState}(single_states))
         report!(reporting_strategy, step[], report, replica_names, replica_values)
         report_after_step!(reporting_strategy, step[], report, state)
         ensure_correct_lengths(report)

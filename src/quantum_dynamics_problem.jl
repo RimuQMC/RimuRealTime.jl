@@ -82,7 +82,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
     set to `false`, no seed is used and consecutive random numbers are used.
 """
 struct QuantumDynamicsProblem{N}
-    algorithm::QDAlgorithm
+    algorithm::NTuple{N,QDAlgorithm}
     hamiltonian::AbstractHamiltonian
     start_at
     shift::Union{Float64,ComplexF64}
@@ -154,12 +154,28 @@ function QuantumDynamicsProblem(
         )
     end
 
+    n_replicas = num_replicas(replica_strategy)
+
+    if !(time_step_strategy isa Tuple)
+        time_step_strategy = ntuple(Returns(time_step_strategy), n_replicas)
+    end
+    if !(evolution_strategy isa Tuple)
+        evolution_strategy = ntuple(Returns(evolution_strategy), n_replicas)
+    end
+    if !(scaling_strategy isa Tuple)
+        scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
+    end
+
     if isnothing(algorithm)
-        algorithm = DiscretizedEvolution(;
-            time_step_strategy,
-            evolution_strategy,
-            scaling_strategy
-        )
+        algorithm = ntuple(n_replicas) do i
+            DiscretizedEvolution(;
+                time_step_strategy=time_step_strategy[i],
+                evolution_strategy=evolution_strategy[i],
+                scaling_strategy=scaling_strategy[i],
+            )
+        end
+    elseif !(algorithm isa Tuple)
+        algorithm = ntuple(Returns(algorithm), n_replicas)
     end
 
     if isnothing(style)
