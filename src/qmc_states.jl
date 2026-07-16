@@ -4,7 +4,7 @@ Abstract type for single states for use with different [`EvolutionStrategy`](@re
 [`QDReplicaState`](@ref) holds the Hamiltonian and time step information.
 
 ## Concrete types:
-
+* [`LeapfrogSingleState`](@ref)
 * [`PECSingleState`](@ref)
 * [`RKSingleState`](@ref)
 * [`EulerSingleState`](@ref)
