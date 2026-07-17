@@ -86,7 +86,7 @@ struct QuantumDynamicsProblem{N}
     hamiltonian::AbstractHamiltonian
     start_at
     shift::Union{Float64,ComplexF64}
-    style::StochasticStyle
+    style::Union{StochasticStyle, Tuple{Vararg{StochasticStyle}}}
     initiator::InitiatorRule
     threading::Bool
     simulation_plan::QDSimulationPlan
@@ -165,6 +165,9 @@ function QuantumDynamicsProblem(
     if !(scaling_strategy isa Tuple)
         scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
     end
+    if !(style isa Tuple)
+        style = ntuple(Returns(style), n_replicas)
+    end
 
     if isnothing(algorithm)
         algorithm = ntuple(n_replicas) do i
@@ -179,7 +182,12 @@ function QuantumDynamicsProblem(
     end
 
     if isnothing(style)
-        style = Rimu.default_style(algorithm[1].evolution_strategy)
+        style = map(a -> Rimu.default_style(a.evolution_strategy), algorithm)
+        if length(style) == 1
+            style = only(style)
+        else
+            style = Tuple(style)
+        end
     end
 
     n_replicas = num_replicas(replica_strategy)
