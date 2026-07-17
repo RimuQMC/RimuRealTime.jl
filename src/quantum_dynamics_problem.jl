@@ -179,7 +179,7 @@ function QuantumDynamicsProblem(
     end
 
     if isnothing(style)
-        style = Rimu.default_style(algorithm.evolution_strategy)
+        style = Rimu.default_style(algorithm[1].evolution_strategy)
     end
 
     n_replicas = num_replicas(replica_strategy)
