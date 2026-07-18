@@ -157,37 +157,37 @@ function QuantumDynamicsProblem(
     n_replicas = num_replicas(replica_strategy)
 
     if !(time_step_strategy isa Tuple)
-            time_step_strategy = ntuple(Returns(time_step_strategy), n_replicas)
-        end
-        if !(evolution_strategy isa Tuple)
-            evolution_strategy = ntuple(Returns(evolution_strategy), n_replicas)
-        end
-        if !(scaling_strategy isa Tuple)
-            scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
-        end
+        time_step_strategy = ntuple(Returns(time_step_strategy), n_replicas)
+    end
+    if !(evolution_strategy isa Tuple)
+        evolution_strategy = ntuple(Returns(evolution_strategy), n_replicas)
+    end
+    if !(scaling_strategy isa Tuple)
+        scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
+    end
 
-        if isnothing(algorithm)
-            algorithm = ntuple(n_replicas) do i
-                DiscretizedEvolution(;
-                    time_step_strategy=time_step_strategy[i],
-                    evolution_strategy=evolution_strategy[i],
-                    scaling_strategy=scaling_strategy[i],
-                )
-            end
-        elseif !(algorithm isa Tuple)
-            algorithm = ntuple(Returns(algorithm), n_replicas)
+    if isnothing(algorithm)
+        algorithm = ntuple(n_replicas) do i
+            DiscretizedEvolution(;
+                time_step_strategy=time_step_strategy[i],
+                evolution_strategy=evolution_strategy[i],
+                scaling_strategy=scaling_strategy[i],
+            )
         end
+    elseif !(algorithm isa Tuple)
+        algorithm = ntuple(Returns(algorithm), n_replicas)
+    end
 
-        if style === nothing
-            style = map(a -> Rimu.default_style(a.evolution_strategy), algorithm)
-            if length(style) == 1
-                style = only(style)
-            else
-                style = Tuple(style)
-            end
-        elseif !(style isa Tuple)
-            style = ntuple(Returns(style), n_replicas)
+    if style === nothing
+        style = map(a -> Rimu.default_style(a.evolution_strategy), algorithm)
+        if length(style) == 1
+            style = only(style)
+        else
+            style = Tuple(style)
         end
+    elseif !(style isa Tuple)
+        style = ntuple(Returns(style), n_replicas)
+    end
 
     n_replicas = num_replicas(replica_strategy)
     

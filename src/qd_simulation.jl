@@ -46,13 +46,14 @@ function QDSimulation(problem::QuantumDynamicsProblem)
 
     start_at = isnothing(start_at) ? starting_address(hamiltonian) : start_at
 
-    make_v(i) = if start_at isa AbstractDVec
-        deepcopy(start_at)
-    else
-        s = style isa Tuple ? style[i] : style
-        default_starting_vector(start_at => initial_walkers; style=s, initiator, threading)
+    vs = ntuple(n_replicas) do i
+        if start_at isa AbstractDVec
+            deepcopy(start_at)
+        else
+            s = style isa Tuple ? style[i] : style
+            default_starting_vector(start_at => initial_walkers; style=s, initiator, threading)
+        end
     end
-    vs = ntuple(make_v, n_replicas)
 
     if initial_time_step_parameters isa NamedTuple
         @unpack abs_time_step, alpha = initial_time_step_parameters
