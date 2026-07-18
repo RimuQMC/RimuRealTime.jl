@@ -31,10 +31,13 @@ Holds information about multiple replicas of [`QDSingleState`](@ref)s.
 
 ## Fields
 - `single_states`: Tuple of `QDSingleState`s.
-- `time_step_parameters`: Time step and parameters for updating it.
+- `time_step_parameters`: Time step and parameters for updating it. The walker
+    count is taken from the first replica.
 - `shift`: Energy shift.
 - `hamiltonian`: Hamiltonian.
-- `algorithm`: Algorithm.
+- `algorithm`: The [`DiscretizedEvolution`](@ref) algorithm of the first replica.
+    It drives global time-step update. Full per-replica algorithms in [`QuantumDynamicsProblem`](@ref)
+    and are configured using [`EvolutionStrategy`](@ref).
 - `step::Ref{Int}`: Current step of the simulation
 - `simulation_plan`: Simulation plan
 - `reporting_strategy`: Reporting strategy
