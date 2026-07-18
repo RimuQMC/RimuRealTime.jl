@@ -179,7 +179,7 @@ end
                     scaling_strategy
                 )
 
-                @test problem.algorithm == DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)
+                @test problem.algorithm == ntuple(Returns(DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)), num_replicas(problem))
                 @test problem.hamiltonian == hamiltonian
                 @test num_replicas(problem) == 3
                 @test eval(Meta.parse(repr(problem.simulation_plan))) == problem.simulation_plan
@@ -409,4 +409,74 @@ end
     zerovector!(s_state.state_imag_staggered_previous)
 
     @test_logs (:error, r"is dead\. Aborting\.") match_mode=:any solve!(sim)
+end
+
+@testset "MultiReplicaAlgorithm" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    replica_strategy = AllOverlaps(2)
+    evolution_strategy = (PEC(), RungeKutta())
+    start_at = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=10,
+        start_at,
+        evolution_strategy,
+        replica_strategy
+    )
+
+    @test length(problem.algorithm) == 2
+    @test problem.algorithm[1].evolution_strategy isa PEC
+    @test problem.algorithm[2].evolution_strategy isa RungeKutta
+
+    sim = init(problem)
+    @test sim.state[1] isa PECSingleState
+    @test sim.state[2] isa RKSingleState
+    @test sim.state[1].state_vector !== sim.state[2].state_vector
+    @test sim.state.algorithm.evolution_strategy isa PEC
+
+    sim = solve(problem)
+    @test sim.success == true
+
+    single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
+    problem2 = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=1,
+        start_at,
+        algorithm=single_algorithm,
+        replica_strategy
+    )
+    @test problem2.algorithm == ntuple(Returns(single_algorithm), 2)
+end
+
+@testset "MultiReplicaStyle" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    replica_strategy = AllOverlaps(2)
+    style = (IsDeterministic{ComplexF64}(), IsDynamicSemistochastic{ComplexF64}())
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=1,
+        initial_walkers=100,
+        evolution_strategy=Euler(),
+        replica_strategy,
+        style
+    )
+
+    @test problem.style == style
+
+    sim = init(problem)
+    @test StochasticStyle(sim.state[1].state_vector) isa IsDeterministic
+    @test StochasticStyle(sim.state[2].state_vector) isa IsDynamicSemistochastic
+    @test sim.state[1].state_vector !== sim.state[2].state_vector
 end
