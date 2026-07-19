@@ -38,6 +38,13 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
+      - name: "Install Rimu.jl from develop branch"
+        run: |
+          julia --color=yes --project=@. -t2 -e "using Pkg; Pkg.add(url=\"https://github.com/RimuQMC/Rimu.jl\", rev=\"develop\");"
+          # This is a workaround and only needed because we need a feature 
+          # in Rimu.jl that is not yet in the latest release. Once the 
+          # feature is released, we can remove this step.
+
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-uploadcoveralls@v1
         env:
