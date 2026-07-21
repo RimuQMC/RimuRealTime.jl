@@ -257,7 +257,7 @@ end
     )
     sim = init(problem)
     @test StochasticStyle(sim.state[1].state_vector) isa IsDeterministic
-    @test sim.state.algorithm.evolution_strategy isa RungeKutta
+    @test first(sim.state.algorithms).evolution_strategy isa RungeKutta
 
     @test_throws ArgumentError QuantumDynamicsProblem(hamiltonian; start_at=DVec(address=>1.0))
 
@@ -437,7 +437,7 @@ end
     @test sim.state[1] isa PECSingleState
     @test sim.state[2] isa RKSingleState
     @test sim.state[1].state_vector !== sim.state[2].state_vector
-    @test sim.state.algorithm.evolution_strategy isa PEC
+    @test first(sim.state.algorithms).evolution_strategy isa PEC
 
     sim = solve(problem)
     @test sim.success == true
