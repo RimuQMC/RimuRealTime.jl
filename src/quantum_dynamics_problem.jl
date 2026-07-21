@@ -176,6 +176,9 @@ function QuantumDynamicsProblem(
     if !(evolution_strategy isa Tuple)
         evolution_strategy = ntuple(Returns(evolution_strategy), n_replicas)
     end
+    if scaling_strategy isa ConstantScaling
+        shift += im*scaling_strategy.scale
+    end
     if !(scaling_strategy isa Tuple)
         scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
     end
@@ -231,10 +234,6 @@ function QuantumDynamicsProblem(
     if isnothing(initial_time_step_parameters)
         abs_time_step = time_step
         initial_time_step_parameters = (; abs_time_step, alpha)
-    end
-
-    if scaling_strategy isa ConstantScaling
-        shift += im*scaling_strategy.scale
     end
 
     report = Report()
