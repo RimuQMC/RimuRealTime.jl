@@ -39,13 +39,14 @@ function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
     )
 end
 
-function advance!(report, state::QDReplicaState, s_state::ProductSingleState)
+function advance!(report, state::QDReplicaState, s_state::ProductSingleState, replica_algo::DiscretizedEvolution)
 
     @unpack state_vector, previous_vector, evolution_operator, working_mem, id, order,
         current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithms = state
     @unpack time_step = time_step_parameters
-    @unpack time_step_strategy, scaling_strategy = algorithm
+    @unpack scaling_strategy = replica_algo
+    time_step_strategy = algorithms[1].time_step_strategy
     step = state.step[]
 
     step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(

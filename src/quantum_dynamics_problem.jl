@@ -42,8 +42,8 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `start_at = starting_address(hamiltonian)`: The initial state, as an address or an
     AbstractDVec.
 - `style = nothing`: Stochastic style of the simulation. For a single `StochasticStyle` 
-    provided same style is replicated for all replicas. Pass a `Tuple` of `StochasticStyle` of
-    length `n_replicas` for different styles for different replicas. When
+    provided, the same style is replicated for all replicas. Pass a `Tuple` of `StochasticStyle`s of
+    length `n_replicas` to use different styles for different replicas. When
     `style === nothing`, the default style is inferred from each replica's
     [`EvolutionStrategy`](@ref).
 - `initiator = false`: Whether to use initiators. Can be `true`, `false`, or a valid
@@ -52,10 +52,9 @@ Defines a problem for time evolution under the given `hamiltonian`.
     [MPI](https://juliaparallel.org/MPI.jl/latest/) if available. Set to
     `true` to force PDVec for the starting vector, `false` for serial computation;
     may be overridden by `start_at`.
-- `evolution_strategy = PEC()`: Strategy for time evolution. For a single `EvolutionStrategy`
-    provided same strategy is replicated for all replicas. Pass a `Tuple` of `EvolutionStrategy`
-    of length `n_replicas` for different strategies for different replicas. See
-    [`EvolutionStrategy`](@ref).
+- `evolution_strategy = PEC()`: Strategy for time evolution. Can be an
+    [`EvolutionStrategy`](@ref), or a tuple of [`EvolutionStrategy`](@ref), one
+    for each replica.
 - `scaling_strategy = NoScaling`: Strategy for controlling walkers by scaling the vector,
     see [`ScalingStrategy`](@ref).
 - `scaling_strategy = NoScaling()`: Strategy for controlling walkers by scaling the vector.
@@ -70,15 +69,15 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `post_step_strategy = ()`: Extract observables (e.g. Rimu.ProjectedEnergy), see
     Rimu.PostStepStrategy.
 - `alpha = 0.0`: Initial phase angle of the time step.
-- `time_step_strategy = ConstantTimeStep()`: Defines how the time step is updated during 
-    the simulation. For a single `TimeStepStrategy` provided same strategy is replicated for 
-    all replicas. Pass a `Tuple` of `TimeStepStrategy` of length `n_replicas` for different 
-    strategies for different replicas. The other implemented strategy is [`WalkerControl`](@ref).
+- `time_step_strategy = ConstantTimeStep()`: Provide a [`Rimu.TimeStepStrategy`](@extref) to 
+    control how the time step is updated during the simulation. This may access the
+    walker number of the first replica. Available strategies are 
+    [`Rimu.ConstantTimeStep`](@extref) and [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
     The algorithm to use. For a single [`DiscretizedEvolution`](@ref) provided same algorithm is
     replicated for all replicas. Pass a `Tuple` of `DiscretizedEvolution` of length `n_replicas` 
-    for different algorithms for different replicas.  The first element `algorithm[1]` 
-    controls the global time-step update.
+    for different algorithms for different replicas. For `n_replicas > 1`, only the first replica's 
+    `time_step_strategy` advances the shared time step and subsequent ones are ignored.
 - `starting_step = 0`: Starting step of the simulation.
 - `wall_time = Inf`: Maximum time allowed for the simulation.
 - `simulation_plan = QDSimulationPlan(; starting_step, last_step, wall_time, maximum_time)`:
