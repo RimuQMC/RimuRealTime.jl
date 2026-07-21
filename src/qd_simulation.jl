@@ -112,6 +112,7 @@ end
             abs_time_step
         )
     else
+        time_step_parameters = initial_time_step_parameters
         time_step = initial_time_step_parameters.time_step
     end
 
