@@ -51,7 +51,7 @@ function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
 end
 
 """
-    advance!(report, state::QDReplicaState, s_state::QDSingleState, replica_algo::DiscretizedEvolution)
+    advance!(report, state::QDReplicaState, s_state::QDSingleState, algorithm::DiscretizedEvolution)
 Advance the state `s_state` by one step, and write data to the `report`.
 """
 function advance!(report, state::QDReplicaState, s_state::PECSingleState, algorithm::DiscretizedEvolution)

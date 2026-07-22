@@ -67,12 +67,12 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `time_step_strategy = ConstantTimeStep()`: Strategy used to control how the
     time step is updated during the simulation. Can be a [`Rimu.TimeStepStrategy`](@extref)
     or a tuple of length `n_replicas`. Note that the `time_step_strategy` of the first replica
-    controls updating the global time step, which applies to all replicas.Available strategies
+    controls updating the global time step, which applies to all replicas. Available strategies
     are [`Rimu.ConstantTimeStep`](@extref) and [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
     The algorithm for time evolution. By default, a [`DiscretizedEvolution`](@ref) struct is constructed
     for each replica from the information provided by `time_step_strategy`, `evolution_strategy`, and
-    `scaling_strategy`. If `algorithm` is provided it overrides the other keyword arguments.Can be a
+    `scaling_strategy`. If `algorithm` is provided it overrides the other keyword arguments. Can be a
     single strategy or a tuple of length `n_replicas`. Only the first replica's `time_step_strategy`
     advances the shared time step and subsequent ones are ignored.
 - `starting_step = 0`: Starting step of the simulation.
