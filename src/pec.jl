@@ -51,16 +51,16 @@ function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
 end
 
 """
-    advance!(report, state::QDReplicaState, s_state::QDSingleState)
+    advance!(report, state::QDReplicaState, s_state::QDSingleState, replica_algo::DiscretizedEvolution)
 Advance the state `s_state` by one step, and write data to the `report`.
 """
-function advance!(report, state::QDReplicaState, s_state::PECSingleState, replica_algo::DiscretizedEvolution)
+function advance!(report, state::QDReplicaState, s_state::PECSingleState, algorithm::DiscretizedEvolution)
     
     @unpack state_vector, predictor, h_predictor_old, h_predictor, working_mem, id,
         damping, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
-    @unpack scaling_strategy = replica_algo
+    @unpack scaling_strategy = algorithm
     step = state.step[]
 
     predictor = add!(zerovector!(predictor), state_vector)
@@ -118,4 +118,8 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState, replic
     end
 
     return true
+end
+
+function create_single_state(es::PEC, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return PECSingleState(v, wm, id, hamiltonian, shift, es.damping)
 end

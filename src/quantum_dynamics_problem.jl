@@ -41,11 +41,10 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `initial_walkers = 1000`: Initial walker population.
 - `start_at = starting_address(hamiltonian)`: The initial state, as an address or an
     AbstractDVec.
-- `style = nothing`: Stochastic style of the simulation. For a single `StochasticStyle` 
-    provided, the same style is replicated for all replicas. Pass a `Tuple` of `StochasticStyle`s of
-    length `n_replicas` to use different styles for different replicas. When
-    `style === nothing`, the default style is inferred from each replica's
-    [`EvolutionStrategy`](@ref).
+- `style = nothing`: Stochastic style of the simulation. If a single `StochasticStyle`
+    is provided , the same style is replicated for all replicas. Otherwise, a `Tuple` of
+    `StochasticStyle`s of length `n_replicas` can be used. When `style === nothing`, the
+    default style is inferred from each replica's [`EvolutionStrategy`](@ref)
 - `initiator = false`: Whether to use initiators. Can be `true`, `false`, or a valid
     Rimu.InitiatorRule.
 - `threading`: Default is to use multithreading and/or
@@ -55,29 +54,27 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `evolution_strategy = PEC()`: Strategy for time evolution. Can be an
     [`EvolutionStrategy`](@ref), or a tuple of [`EvolutionStrategy`](@ref), one
     for each replica.
-- `scaling_strategy = NoScaling`: Strategy for controlling walkers by scaling the vector,
-    see [`ScalingStrategy`](@ref).
-- `scaling_strategy = NoScaling()`: Strategy for controlling walkers by scaling the vector.
-    For a single `ScalingStrategy` provided same strategy is replicated for all replicas. 
-    Pass a `Tuple` of `ScalingStrategy` of length `n_replicas` for different strategies for 
-    different replicas. See [`ScalingStrategy`](@ref).
+- `scaling_strategy = NoScaling()`: Strategy for controlling the norm during time evolution
+    by scaling the vector. Can be a [`ScalingStrategy`](@ref) or a tuple of length `n_replicas`.
 - `n_replicas = 1`: Number of synchronised independent simulations.
 - `replica_strategy = NoStats(n_replicas)`: Which results to report from replica
-    simulations. See Rimu.ReplicaStrategy.
+    simulations. See [`Rimu.ReplicaStrategy`](@extref).
 - `reporting_strategy = ReportDFAndInfo()`: How and when to report results, see
-    `ReportingStrategy` in the [Rimu repository](https://rimuqmc.github.io/Rimu.jl/stable/index.html).
+    [`Rimu.ReportingStrategy`](@extref).
 - `post_step_strategy = ()`: Extract observables (e.g. Rimu.ProjectedEnergy), see
-    Rimu.PostStepStrategy.
+    [`Rimu.PostStepStrategy`](@extref).
 - `alpha = 0.0`: Initial phase angle of the time step.
-- `time_step_strategy = ConstantTimeStep()`: Provide a [`Rimu.TimeStepStrategy`](@extref) to 
-    control how the time step is updated during the simulation. This may access the
-    walker number of the first replica. Available strategies are 
-    [`Rimu.ConstantTimeStep`](@extref) and [`WalkerControl`](@ref).
+- `time_step_strategy = ConstantTimeStep()`: Strategy used to control how the
+    time step is updated during the simulation. Can be a [`Rimu.TimeStepStrategy`](@extref)
+    or a tuple of length `n_replicas`. Note that the `time_step_strategy` of the first replica
+    controls updating the global time step, which applies to all replicas.Available strategies
+    are [`Rimu.ConstantTimeStep`](@extref) and [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
-    The algorithm to use. For a single [`DiscretizedEvolution`](@ref) provided same algorithm is
-    replicated for all replicas. Pass a `Tuple` of `DiscretizedEvolution` of length `n_replicas` 
-    for different algorithms for different replicas. For `n_replicas > 1`, only the first replica's 
-    `time_step_strategy` advances the shared time step and subsequent ones are ignored.
+    The algorithm for time evolution. By default, a [`DiscretizedEvolution`](@ref) struct is constructed
+    for each replica from the information provided by `time_step_strategy`, `evolution_strategy`, and
+    `scaling_strategy`. If `algorithm` is provided it overrides the other keyword arguments.Can be a
+    single strategy or a tuple of length `n_replicas`. Only the first replica's `time_step_strategy`
+    advances the shared time step and subsequent ones are ignored.
 - `starting_step = 0`: Starting step of the simulation.
 - `wall_time = Inf`: Maximum time allowed for the simulation.
 - `simulation_plan = QDSimulationPlan(; starting_step, last_step, wall_time, maximum_time)`:
@@ -96,7 +93,7 @@ Defines a problem for time evolution under the given `hamiltonian`.
     set to `false`, no seed is used and consecutive random numbers are used.
 """
 struct QuantumDynamicsProblem{N}
-    algorithm::NTuple{N,QDAlgorithm}
+    algorithms::NTuple{N,QDAlgorithm}
     hamiltonian::AbstractHamiltonian
     start_at
     shift::Union{Float64,ComplexF64}
@@ -116,7 +113,7 @@ end
 function Base.show(io::IO, p::QuantumDynamicsProblem)
     nr = num_replicas(p)
     println(io, "QuantumDynamicsProblem with $nr replica(s):")
-    isnothing(p.algorithm) || println(io, "  algorithm = ", p.algorithm)
+    isnothing(p.algorithms) || println(io, "  algorithm = ", p.algorithms)
     println(io, "  hamiltonian = ", p.hamiltonian)
     println(io, "  start_at = ", p.start_at)
     println(io, "  style = ", p.style)
@@ -207,13 +204,6 @@ function QuantumDynamicsProblem(
     end
 
     n_replicas = num_replicas(replica_strategy)
-    
-    if style isa Tuple
-        @assert length(style) == n_replicas "Style tuple length must equal n_replicas"
-        _style = style
-    else
-        _style = ntuple(_ -> style, n_replicas)
-    end
 
     if random_seed == true
         random_seed = rand(RandomDevice(), UInt64)

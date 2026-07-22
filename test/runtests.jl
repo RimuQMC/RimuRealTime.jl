@@ -179,7 +179,7 @@ end
                     scaling_strategy
                 )
 
-                @test problem.algorithm == ntuple(Returns(DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)), num_replicas(problem))
+                @test problem.algorithms == ntuple(Returns(DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy, scaling_strategy)), num_replicas(problem))
                 @test problem.hamiltonian == hamiltonian
                 @test num_replicas(problem) == 3
                 @test eval(Meta.parse(repr(problem.simulation_plan))) == problem.simulation_plan
@@ -429,9 +429,9 @@ end
         replica_strategy
     )
 
-    @test length(problem.algorithm) == 2
-    @test problem.algorithm[1].evolution_strategy isa PEC
-    @test problem.algorithm[2].evolution_strategy isa RungeKutta
+    @test length(problem.algorithms) == 2
+    @test problem.algorithms[1].evolution_strategy isa PEC
+    @test problem.algorithms[2].evolution_strategy isa RungeKutta
 
     sim = init(problem)
     @test sim.state[1] isa PECSingleState
@@ -452,7 +452,7 @@ end
         algorithm=single_algorithm,
         replica_strategy
     )
-    @test problem2.algorithm == ntuple(Returns(single_algorithm), 2)
+    @test problem2.algorithms == ntuple(Returns(single_algorithm), 2)
 
     single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
     problem2 = QuantumDynamicsProblem(
@@ -464,7 +464,7 @@ end
         algorithm=single_algorithm,
         replica_strategy
     )
-    @test problem2.algorithm == ntuple(Returns(single_algorithm), 2)
+    @test problem2.algorithms == ntuple(Returns(single_algorithm), 2)
 
     sim2 = init(problem2)
     @test sim2.algorithm isa NTuple{2, DiscretizedEvolution}

@@ -35,9 +35,9 @@ Holds information about multiple replicas of [`QDSingleState`](@ref)s.
     count is taken from the first replica.
 - `shift`: Energy shift.
 - `hamiltonian`: Hamiltonian.
-- `algorithms`: The [`DiscretizedEvolution`](@ref) algorithm of the first replica.
-    It drives global time-step update. Full per-replica algorithms in [`QuantumDynamicsProblem`](@ref)
-    and are configured using [`EvolutionStrategy`](@ref).
+- `algorithms` : The [`QDAlgorithm`](@ref)s of each replica. The first one
+    drives the global time-step update according to the [`Rimu.TimeStepStrategy`](@extref)
+    of the first replica.
 - `step::Ref{Int}`: Current step of the simulation
 - `simulation_plan`: Simulation plan
 - `reporting_strategy`: Reporting strategy
@@ -74,7 +74,7 @@ Base.getindex(r::QDReplicaState, i::Int) = r.single_states[i]
 
 function Rimu.report_default_metadata!(report::Report, state::QDReplicaState)
     metadata!(report, "pkgversion(RimuRealTime)", pkgversion(RimuRealTime))
-    metadata!(report, "algorithm", first(state.algorithms))
+    metadata!(report, "algorithms", state.algorithms)
     metadata!(report, "maximum_time", state.simulation_plan.maximum_time)
     metadata!(report, "num_replicas", num_replicas(state))
     metadata!(report, "num_overlaps", num_overlaps(state))

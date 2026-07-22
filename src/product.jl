@@ -89,3 +89,7 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState, re
 
     return true
 end
+
+function create_single_state(es::Product, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return ProductSingleState(v, wm, id, hamiltonian, time_step, es.order)
+end

@@ -44,13 +44,13 @@ include("strategies_and_params.jl")
 include("quantum_dynamics_problem.jl")
 include("qmc_states.jl")
 include("discretized_evolution.jl")
+include("qd_simulation.jl")
 include("leapfrog.jl")
 include("exact.jl")
 include("pec.jl")
 include("runge_kutta.jl")
 include("euler.jl")
 include("product.jl")
-include("qd_simulation.jl")
 
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
