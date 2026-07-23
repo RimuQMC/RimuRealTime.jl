@@ -87,12 +87,14 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
 end
 
 
-function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
+function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, algorithm::DiscretizedEvolution)
+    
     @unpack state_vector, state_real, state_imag_staggered, state_imag_staggered_previous,
         h_real, h_imag, working_mem, id, current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
-    @unpack time_step_strategy, scaling_strategy = algorithm
+    @unpack scaling_strategy = algorithm
+    time_step_strategy = algorithm.time_step_strategy
     step = state.step[]
 
     @assert time_step_strategy isa ConstantTimeStep "Only constant time step is currently implemented for Leapfrog."
@@ -156,6 +158,10 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState)
         end
     end
     return true
+end
+
+function create_single_state(es::Leapfrog, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step)
 end
 
 """

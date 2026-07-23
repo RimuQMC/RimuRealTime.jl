@@ -34,13 +34,14 @@ function EulerSingleState(v, wm, id, hamiltonian, time_step)
     )
 end
 
-function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
+function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algorithm::DiscretizedEvolution)
 
     @unpack state_vector, previous_vector, evolution_operator, working_mem, id,
         current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
-    @unpack time_step_strategy, scaling_strategy = algorithm
+    @unpack scaling_strategy = algorithm
+    time_step_strategy = algorithm.time_step_strategy
     step = state.step[]
 
     step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(
@@ -83,4 +84,8 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState)
     end
 
     return true
+end
+
+function create_single_state(::Euler, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return EulerSingleState(v, wm, id, hamiltonian, time_step)
 end

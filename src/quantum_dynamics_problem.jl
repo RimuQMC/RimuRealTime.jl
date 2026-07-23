@@ -41,29 +41,40 @@ Defines a problem for time evolution under the given `hamiltonian`.
 - `initial_walkers = 1000`: Initial walker population.
 - `start_at = starting_address(hamiltonian)`: The initial state, as an address or an
     AbstractDVec.
-- `style = IsDynamicSemistochastic{ComplexF64}()`: Stochastic style of the simulation.
+- `style = nothing`: Stochastic style of the simulation. If a single `StochasticStyle`
+    is provided , the same style is replicated for all replicas. Otherwise, a `Tuple` of
+    `StochasticStyle`s of length `n_replicas` can be used. When `style === nothing`, the
+    default style is inferred from each replica's [`EvolutionStrategy`](@ref)
 - `initiator = false`: Whether to use initiators. Can be `true`, `false`, or a valid
     Rimu.InitiatorRule.
 - `threading`: Default is to use multithreading and/or
     [MPI](https://juliaparallel.org/MPI.jl/latest/) if available. Set to
     `true` to force PDVec for the starting vector, `false` for serial computation;
     may be overridden by `start_at`.
-- `evolution_strategy = PEC()`: Strategy for time evolution, see
-    [`EvolutionStrategy`](@ref).
-- `scaling_strategy = NoScaling`: Strategy for controlling walkers by scaling the vector,
-    see [`ScalingStrategy`](@ref).
+- `evolution_strategy = PEC()`: Strategy for time evolution. Can be an
+    [`EvolutionStrategy`](@ref), or a tuple of [`EvolutionStrategy`](@ref), one
+    for each replica.
+- `scaling_strategy = NoScaling()`: Strategy for controlling the norm during time evolution
+    by scaling the vector. Can be a [`ScalingStrategy`](@ref) or a tuple of length `n_replicas`.
 - `n_replicas = 1`: Number of synchronised independent simulations.
 - `replica_strategy = NoStats(n_replicas)`: Which results to report from replica
-    simulations. See Rimu.ReplicaStrategy.
+    simulations. See [`Rimu.ReplicaStrategy`](@extref).
 - `reporting_strategy = ReportDFAndInfo()`: How and when to report results, see
-    `ReportingStrategy` in the [Rimu repository](https://rimuqmc.github.io/Rimu.jl/stable/index.html).
+    [`Rimu.ReportingStrategy`](@extref).
 - `post_step_strategy = ()`: Extract observables (e.g. Rimu.ProjectedEnergy), see
-    Rimu.PostStepStrategy.
+    [`Rimu.PostStepStrategy`](@extref).
 - `alpha = 0.0`: Initial phase angle of the time step.
-- `time_step_strategy = ConstantTimeStep()`: Defines how the time step is updated during
-    the simulation. The other implemented strategy is [`WalkerControl`](@ref).
+- `time_step_strategy = ConstantTimeStep()`: Strategy used to control how the
+    time step is updated during the simulation. Can be a [`Rimu.TimeStepStrategy`](@extref)
+    or a tuple of length `n_replicas`. Note that the `time_step_strategy` of the first replica
+    controls updating the global time step, which applies to all replicas. Available strategies
+    are [`Rimu.ConstantTimeStep`](@extref) and [`WalkerControl`](@ref).
 - `algorithm = DiscretizedEvolution(; time_step_strategy, evolution_strategy, scaling_strategy)`:
-    The algorithm to use. Currently only [`DiscretizedEvolution`](@ref) is implemented.
+    The algorithm for time evolution. By default, a [`DiscretizedEvolution`](@ref) struct is constructed
+    for each replica from the information provided by `time_step_strategy`, `evolution_strategy`, and
+    `scaling_strategy`. If `algorithm` is provided it overrides the other keyword arguments. Can be a
+    single strategy or a tuple of length `n_replicas`. Only the first replica's `time_step_strategy`
+    advances the shared time step and subsequent ones are ignored.
 - `starting_step = 0`: Starting step of the simulation.
 - `wall_time = Inf`: Maximum time allowed for the simulation.
 - `simulation_plan = QDSimulationPlan(; starting_step, last_step, wall_time, maximum_time)`:
@@ -82,11 +93,11 @@ Defines a problem for time evolution under the given `hamiltonian`.
     set to `false`, no seed is used and consecutive random numbers are used.
 """
 struct QuantumDynamicsProblem{N}
-    algorithm::QDAlgorithm
+    algorithms::NTuple{N,QDAlgorithm}
     hamiltonian::AbstractHamiltonian
     start_at
     shift::Union{Float64,ComplexF64}
-    style::StochasticStyle
+    style::Union{StochasticStyle, Tuple{Vararg{StochasticStyle}}}
     initiator::InitiatorRule
     threading::Bool
     simulation_plan::QDSimulationPlan
@@ -102,7 +113,7 @@ end
 function Base.show(io::IO, p::QuantumDynamicsProblem)
     nr = num_replicas(p)
     println(io, "QuantumDynamicsProblem with $nr replica(s):")
-    isnothing(p.algorithm) || println(io, "  algorithm = ", p.algorithm)
+    isnothing(p.algorithms) || println(io, "  algorithm = ", p.algorithms)
     println(io, "  hamiltonian = ", p.hamiltonian)
     println(io, "  start_at = ", p.start_at)
     println(io, "  style = ", p.style)
@@ -154,16 +165,42 @@ function QuantumDynamicsProblem(
         )
     end
 
-    if isnothing(algorithm)
-        algorithm = DiscretizedEvolution(;
-            time_step_strategy,
-            evolution_strategy,
-            scaling_strategy
-        )
+    n_replicas = num_replicas(replica_strategy)
+
+    if !(time_step_strategy isa Tuple)
+        time_step_strategy = ntuple(Returns(time_step_strategy), n_replicas)
+    end
+    if !(evolution_strategy isa Tuple)
+        evolution_strategy = ntuple(Returns(evolution_strategy), n_replicas)
+    end
+    if scaling_strategy isa ConstantScaling
+        shift += im*scaling_strategy.scale
+    end
+    if !(scaling_strategy isa Tuple)
+        scaling_strategy = ntuple(Returns(scaling_strategy), n_replicas)
     end
 
-    if isnothing(style)
-        style = Rimu.default_style(algorithm.evolution_strategy)
+    if isnothing(algorithm)
+        algorithm = ntuple(n_replicas) do i
+            DiscretizedEvolution(;
+                time_step_strategy=time_step_strategy[i],
+                evolution_strategy=evolution_strategy[i],
+                scaling_strategy=scaling_strategy[i],
+            )
+        end
+    elseif !(algorithm isa Tuple)
+        algorithm = ntuple(Returns(algorithm), n_replicas)
+    end
+
+    if style === nothing
+        style = map(a -> Rimu.default_style(a.evolution_strategy), algorithm)
+        if length(style) == 1
+            style = only(style)
+        else
+            style = Tuple(style)
+        end
+    elseif !(style isa Tuple)
+        style = ntuple(Returns(style), n_replicas)
     end
 
     n_replicas = num_replicas(replica_strategy)
@@ -187,10 +224,6 @@ function QuantumDynamicsProblem(
     if isnothing(initial_time_step_parameters)
         abs_time_step = time_step
         initial_time_step_parameters = (; abs_time_step, alpha)
-    end
-
-    if scaling_strategy isa ConstantScaling
-        shift += im*scaling_strategy.scale
     end
 
     report = Report()

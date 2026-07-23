@@ -48,13 +48,14 @@ function RKSingleState(v, wm, id, hamiltonian, time_step, damping=0.0)
     )
 end
 
-function advance!(report, state::QDReplicaState, s_state::RKSingleState)
-
+function advance!(report, state::QDReplicaState, s_state::RKSingleState, algorithm::DiscretizedEvolution)
+    
     @unpack state_vector, storage_vector_1, storage_vector_2, working_mem,
         evolution_operator, half_evolution_operator, id, damping, current_scale = s_state
-    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy, algorithm = state
+    @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
-    @unpack  time_step_strategy, scaling_strategy = algorithm
+    @unpack scaling_strategy = algorithm
+    time_step_strategy = algorithm.time_step_strategy
     step = state.step[]
 
     a, b, working_mem, storage_vector_1 = apply_operator!(
@@ -101,4 +102,8 @@ function advance!(report, state::QDReplicaState, s_state::RKSingleState)
     end
 
     return true
+end
+
+function create_single_state(es::RungeKutta, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return RKSingleState(v, wm, id, hamiltonian, time_step, es.damping)
 end

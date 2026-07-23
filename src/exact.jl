@@ -71,12 +71,12 @@ function ExactSingleState(v, wm, id::String, algorithm::ExactEvolution=ExactEvol
 end
 
 """
-    advance!(report, state::QDReplicaState, s_state::ExactSingleState)
+    advance!(report, state::QDReplicaState, s_state::ExactSingleState, ::DiscretizedEvolution)
 Advance the state `s_state` by one step via ``v_{n+1} = e^{-i H dt} v_n`` using a
 Krylov subspace approximation, and write data to the `report`.
 """
-function advance!(report, state::QDReplicaState, s_state::ExactSingleState)
-
+function advance!(report, state::QDReplicaState, s_state::ExactSingleState, _)
+    
     @unpack state_vector, working_mem, id, algorithm = s_state
     @unpack krylovdim, tol, maxiter, eager, verbosity = algorithm
     @unpack time_step_parameters, hamiltonian, reporting_strategy = state
@@ -122,4 +122,8 @@ function advance!(report, state::QDReplicaState, s_state::ExactSingleState)
     end
 
     return true
+end
+
+function create_single_state(es::ExactEvolution, algorithm, v, wm, id, hamiltonian, shift, time_step)
+    return ExactSingleState(v, wm, id, es)
 end

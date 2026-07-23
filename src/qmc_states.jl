@@ -31,10 +31,13 @@ Holds information about multiple replicas of [`QDSingleState`](@ref)s.
 
 ## Fields
 - `single_states`: Tuple of `QDSingleState`s.
-- `time_step_parameters`: Time step and parameters for updating it.
+- `time_step_parameters`: Time step and parameters for updating it. The walker
+    count is taken from the first replica.
 - `shift`: Energy shift.
 - `hamiltonian`: Hamiltonian.
-- `algorithm`: Algorithm.
+- `algorithms` : The [`QDAlgorithm`](@ref)s of each replica. The first one
+    drives the global time-step update according to the [`Rimu.TimeStepStrategy`](@extref)
+    of the first replica.
 - `step::Ref{Int}`: Current step of the simulation
 - `simulation_plan`: Simulation plan
 - `reporting_strategy`: Reporting strategy
@@ -54,7 +57,7 @@ struct QDReplicaState{
     time_step_parameters::TimeStepParameters
     shift::Union{Float64,ComplexF64}
     hamiltonian::H
-    algorithm::A
+    algorithms::A
     step::Ref{Int}
     simulation_plan::QDSimulationPlan
     reporting_strategy::RS
@@ -71,13 +74,13 @@ Base.getindex(r::QDReplicaState, i::Int) = r.single_states[i]
 
 function Rimu.report_default_metadata!(report::Report, state::QDReplicaState)
     metadata!(report, "pkgversion(RimuRealTime)", pkgversion(RimuRealTime))
-    metadata!(report, "algorithm", state.algorithm)
+    metadata!(report, "algorithms", state.algorithms)
     metadata!(report, "maximum_time", state.simulation_plan.maximum_time)
     metadata!(report, "num_replicas", num_replicas(state))
     metadata!(report, "num_overlaps", num_overlaps(state))
     metadata!(report, "hamiltonian", state.hamiltonian)
     metadata!(report, "reporting_strategy", state.reporting_strategy)
-    metadata!(report, "time_step_strategy", state.algorithm.time_step_strategy)
+    metadata!(report, "time_step_strategy", first(state.algorithms).time_step_strategy)
     metadata!(report, "time_step", state.time_step_parameters.abs_time_step)
     metadata!(report, "step", state.step[])
     metadata!(report, "shift", state.shift)

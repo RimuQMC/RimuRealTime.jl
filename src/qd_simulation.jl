@@ -1,3 +1,7 @@
+function create_single_state(algorithm::DiscretizedEvolution, v, wm, id, hamiltonian, shift, time_step)
+    return create_single_state(algorithm.evolution_strategy, algorithm, v, wm, id, hamiltonian, shift, time_step)
+end
+
 """
     QDSimulation
 Holds the state and the results of a quantum dynamics simulation.
@@ -31,10 +35,10 @@ end
 
 function QDSimulation(problem::QuantumDynamicsProblem)
 
-    @unpack algorithm, hamiltonian, start_at, style, threading, simulation_plan,
-        replica_strategy, initial_time_step_parameters, initial_walkers, shift,
-        reporting_strategy, post_step_strategy,
-        metadata, initiator, random_seed = problem
+    @unpack algorithms, hamiltonian, start_at, style, threading, simulation_plan,
+            replica_strategy, initial_time_step_parameters, initial_walkers, shift,
+            reporting_strategy, post_step_strategy,
+            metadata, initiator, random_seed = problem
 
     reporting_strategy = refine_reporting_strategy(reporting_strategy)
 
@@ -45,22 +49,38 @@ function QDSimulation(problem::QuantumDynamicsProblem)
     end
 
     start_at = isnothing(start_at) ? starting_address(hamiltonian) : start_at
-    if start_at isa AbstractDVec
-        v = deepcopy(start_at)
-    else
-        v = default_starting_vector(start_at => initial_walkers; style, initiator, threading)
+
+    starting_vectors = ntuple(n_replicas) do i
+        if start_at isa AbstractDVec
+            deepcopy(start_at)
+        elseif eltype(start_at) <: AbstractDVec
+            if length(start_at) != n_replicas
+                throw(ArgumentError(
+                    "Length of start_at collection ($(length(start_at))) must match n_replicas ($n_replicas)."
+                ))
+            end
+            start_at[i]
+        elseif start_at isa AbstractFockAddress
+            s = style isa Tuple ? style[i] : style 
+            default_starting_vector(start_at => initial_walkers; style=s, initiator, threading)
+        else
+            throw(ArgumentError(
+            "start_at must be an AbstractDVec, a collection of AbstractDVecs, " *
+            "or an AbstractFockAddress, got $(typeof(start_at))."
+        ))
     end
+end
 
     if initial_time_step_parameters isa NamedTuple
         @unpack abs_time_step, alpha = initial_time_step_parameters
-        if !iszero(alpha) || algorithm.time_step_strategy isa WalkerControl
+        if !iszero(alpha) || algorithms[1].time_step_strategy isa WalkerControl
             K = ComplexF64
         else
             K = Float64
         end
         time = zero(K)
         time_step = K(abs_time_step*exp(-im*alpha))
-        walkers = norm(v, 1)
+        walkers = norm(first(starting_vectors), 1)
         time_step_parameters = TimeStepParameters{K}(
             alpha,
             walkers,
@@ -68,37 +88,30 @@ function QDSimulation(problem::QuantumDynamicsProblem)
             time_step,
             abs_time_step
         )
+    else
+        time_step_parameters = initial_time_step_parameters
+        time_step = initial_time_step_parameters.time_step
     end
 
-    wm = working_memory(v)
+
     single_states = ntuple(n_replicas) do i
+        v = starting_vectors[i]
+        wm = working_memory(v)
         id = if n_replicas == 1
             ""
         else
             "_r$(i)"
         end
-        if algorithm.evolution_strategy isa Leapfrog
-            LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step)
-        elseif algorithm.evolution_strategy isa ExactEvolution
-            ExactSingleState(v, wm, id, algorithm.evolution_strategy)
-        elseif algorithm.evolution_strategy isa PEC
-            PECSingleState(v, wm, id, hamiltonian, shift, algorithm.evolution_strategy.damping)
-        elseif algorithm.evolution_strategy isa RungeKutta
-            RKSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.damping)
-        elseif algorithm.evolution_strategy isa Euler
-            EulerSingleState(v, wm, id, hamiltonian, time_step)
-        elseif algorithm.evolution_strategy isa Product
-            ProductSingleState(v, wm, id, hamiltonian, time_step, algorithm.evolution_strategy.order)
-        end
+        create_single_state(algorithms[i], v, wm, id, hamiltonian, shift, time_step)
     end
-    @assert single_states isa NTuple{n_replicas, <:QDSingleState}
+    @assert single_states isa Tuple{Vararg{QDSingleState,n_replicas}}
 
-    state = QDReplicaState(
+        state = QDReplicaState(
         single_states,
         time_step_parameters,
         shift,
         hamiltonian,
-        algorithm,
+        algorithms,
         Ref(simulation_plan.starting_step),
         simulation_plan,
         reporting_strategy,
@@ -141,7 +154,7 @@ function Base.getproperty(sm::QDSimulation, key::Symbol)
     if key == :df
         return DataFrame(sm)
     elseif key == :algorithm
-        return sm.state.algorithm
+        return sm.state.algorithms
     elseif key == :hamiltonian
         return sm.state.hamiltonian
     else
@@ -177,10 +190,9 @@ See also [`QuantumDynamicsProblem`](@ref), [`init`](@ref), [`solve!`](@ref),
 [`solve`](@ref), [`QDSimulation`](@ref).
 """
 function CommonSolve.step!(sm::QDSimulation)
-    @unpack state, report, algorithm = sm
+    @unpack state, report = sm
     @unpack single_states, time_step_parameters, simulation_plan, step, reporting_strategy,
-        replica_strategy = state
-    @unpack time_step_strategy = algorithm
+        replica_strategy, algorithms = state
 
     if sm.aborted || sm.success
         @warn "Simulation is already aborted or finished."
@@ -198,13 +210,13 @@ function CommonSolve.step!(sm::QDSimulation)
     end
 
     proceed = true
-    for replica in single_states
-        proceed &= advance!(report, state, replica)
+    for (i, replica) in enumerate(single_states)
+        proceed &= advance!(report, state, replica, algorithms[i])
     end
     sm.modified = true
 
     time_step_stats = update_time_step!(
-        time_step_strategy,
+        first(algorithms).time_step_strategy,
         time_step_parameters,
         norm(single_states[1].state_vector, 1)
     )
@@ -212,7 +224,7 @@ function CommonSolve.step!(sm::QDSimulation)
     if step[] % reporting_interval(state.reporting_strategy) == 0
         report!(reporting_strategy, step[], report, time_step_stats)
 
-        replica_names, replica_values = replica_stats(replica_strategy, single_states)
+        replica_names, replica_values = replica_stats(replica_strategy, NTuple{length(single_states),QDSingleState}(single_states))
         report!(reporting_strategy, step[], report, replica_names, replica_values)
         report_after_step!(reporting_strategy, step[], report, state)
         ensure_correct_lengths(report)
