@@ -5,13 +5,35 @@ Address type for use with [`Clock`](@ref)s. Stores an address in the underlying 
 and a time step index `t`. These are accessed with [`fock_address`](@ref) and
 [`time_index`](@ref).
 """
-struct ClockAddress{N,M,A<:AbstractFockAddress{N,M}} <: AbstractFockAddress{N,M}
+struct ClockAddress{A<:AbstractFockAddress} <: AbstractFockAddress
     address::A
     t::Int
 end
 
 function Base.show(io::IO, a::ClockAddress)
     print(io, "ClockAddress(", fock_address(a), ", ", time_index(a), ")")
+end
+
+function Rimu.Interfaces.num_components(::Type{<:ClockAddress{A}}) where {A}
+    return num_components(A)
+end
+function Rimu.Interfaces.num_particles(a::ClockAddress)
+    return num_particles(fock_address(a))
+end
+function Rimu.Interfaces.num_particles(::Type{<:ClockAddress{A}}) where {A}
+    return num_particles(A)
+end
+function Rimu.Interfaces.num_modes(::Type{<:ClockAddress{A}}) where {A}
+    return num_modes(A)
+end
+function Rimu.Interfaces.num_modes_are_equal(::Type{<:ClockAddress{A}}) where {A}
+    return num_modes_are_equal(A)
+end
+function Rimu.Interfaces.num_modes_check_equal(::Type{<:ClockAddress{A}}) where {A}
+    return num_modes_check_equal(A)
+end
+function Rimu.Interfaces.maximum_mode_occupation(::Type{<:ClockAddress{A}}) where {A}
+    return maximum_mode_occupation(A)
 end
 
 """
@@ -72,11 +94,11 @@ struct Clock{U1,U2} <: AbstractHamiltonian{ComplexF64}
     penalty::Float64
 end
 
-function Clock(u, length; start_at=DVec(starting_address(u) => 1.0), penalty=1.0) 
+function Clock(u, length; start_at=DVec(starting_address(u) => 1.0), penalty=1.0)
     return Clock(u, u', length, start_at, penalty)
 end
 
-function Rimu.allows_address_type(c::Clock, ::Type{<:ClockAddress{<:Any,<:Any,A}}) where {A}
+function Rimu.allows_address_type(c::Clock, ::Type{<:ClockAddress{A}}) where {A}
     return allows_address_type(time_evolution_operator(c), A)
 end
 
@@ -328,7 +350,7 @@ function Base.iterate(o::ClockOffdiagonals, state::ClockIterState{S1}) where {S1
                 return ClockAddress(add, time_index(o.address) + 1) => -0.5*val,
                     ClockIterState{typeof(state1)}(state1, false)
             end
-            
+
         end
     end
 end
@@ -348,7 +370,7 @@ end
 
 function Rimu.allows_address_type(
     o::ClockOperator,
-    ::Type{ClockAddress{<:Any,<:Any,A}}
+    ::Type{ClockAddress{A}}
 ) where {A}
     return allows_address_type(o.op, A)
 end
