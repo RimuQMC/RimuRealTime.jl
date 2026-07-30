@@ -36,6 +36,26 @@ end
 end
 
 @testset "Clock" begin
+    @testset "ClockAddress" begin
+        addc = BoseFS(2,0,0)
+        addr = ClockAddress(addc, 5)
+        addm = BoseFS{missing}(2,0,3)
+        addrm = ClockAddress(addm, 5)
+        @test fock_address(addr) == addc
+        @test time_index(addr) == 5
+        @test addr isa ClockAddress
+        @test addr isa AbstractFockAddress
+        @test allows_address_type(Clock(HubbardReal1D(addc), 10), typeof(addr))
+        @test !allows_address_type(Clock(HubbardReal1D(addc), 10), BoseFS)
+        @test num_components(addr) == num_components(addc)
+        @test num_particles(addr) == num_particles(addc)
+        @test ismissing(num_particles(typeof(addrm))) == true
+        @test num_particles(addrm) == 5 == num_particles(addm)
+        @test num_modes(addr) == num_modes(addc)
+        @test num_modes_are_equal(addr)
+        @test num_modes_check_equal(addr, addc) == num_modes_check_equal(addc) == 3
+        @test maximum_mode_occupation(addr) == maximum_mode_occupation(addc)
+    end
     @testset "Nth Order Clock" begin
         for N in 1:3
             add = BoseFS(2,0,0)
