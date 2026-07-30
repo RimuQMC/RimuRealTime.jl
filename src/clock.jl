@@ -370,7 +370,7 @@ end
 
 function Rimu.allows_address_type(
     o::ClockOperator,
-    ::Type{ClockAddress{A}}
+    ::Type{<:ClockAddress{A}}
 ) where {A}
     return allows_address_type(o.op, A)
 end
