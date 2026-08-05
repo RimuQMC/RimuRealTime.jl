@@ -15,6 +15,7 @@ DiscretizedEvolution
 QDReplicaState
 QDSingleState
 LeapfrogSingleState
+LeapfrogComplexSingleState
 EulerSingleState
 RKSingleState
 PECSingleState

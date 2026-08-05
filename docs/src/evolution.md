@@ -7,6 +7,7 @@ CurrentModule = RimuRealTime
 ```@docs
 EvolutionStrategy
 Leapfrog
+LeapfrogComplex
 Euler
 RungeKutta
 PEC
@@ -16,6 +17,7 @@ FirstOrderTimeEvolution
 NthOrderTimeEvolution
 ExponentialSampler
 Norm2LeapfrogProjector
+Norm2LeapfrogComplexProjector
 ```
 
 ## Index

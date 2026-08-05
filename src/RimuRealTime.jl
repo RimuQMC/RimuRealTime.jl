@@ -58,9 +58,9 @@ export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
 export time_index, fock_address, num_steps, time_evolution_operator, starting_state
 export DiscretizedEvolution, WalkerControl, QuantumDynamicsProblem, QDSimulationPlan
-export EvolutionStrategy, ExactEvolution, Leapfrog, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
+export EvolutionStrategy, ExactEvolution, Leapfrog, LeapfrogComplex, PEC, RungeKutta, Euler, Product, num_replicas, num_overlaps
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
-export Norm2LeapfrogProjector
+export Norm2LeapfrogProjector, Norm2LeapfrogComplexProjector
 
 end
