@@ -142,6 +142,7 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, a
     comp_stat = compress!(state_vector)
     compress!(state_real)
     compress!(state_imag_staggered)
+    compress!(state_imag_staggered_previous)
     names = (step_stat_names..., comp_name..., scale_names...)
     stats = (step_stat_values..., comp_stat..., scale_stats...)
 
@@ -204,20 +205,15 @@ staggered states are obtained by Euler estimates at the preceding half-step
 time points,
 
 ```math
-C_{-1/2} = C_0 + \\frac{iΔt}{2}(H-S)C_0,\\
-C_{-3/2} = C_0 + \\frac{3iΔt}{2}(H-S)C_0.
+C_{-1/2} = C_0 + \\frac{i \\Delta t}{2}(H-S) C_0,\\\\
+C_{-3/2} = C_0 + \\frac{3 i \\Delta t}{2}(H-S) C_0.
 ```
 
-At each step, the staggered state is advanced according to
+At each step, the staggered state and integer-grid state are advanced according to
 
 ```math
-C_{n+1/2} = C_{n-1/2} - iΔt(H-S)C_n,
-```
-
-followed by the update of the integer-grid state,
-
-```math
-C_{n+1} = C_n - iΔt(H-S)C_{n+1/2}.
+C_{n+1/2} = C_{n-1/2} - i \\Delta t (H-S) C_n,\\\\
+C_{n+1} = C_n - i \\Delta t (H-S) C_{n+1/2}.
 ```
 
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
@@ -244,6 +240,7 @@ See also [`LeapfrogComplex`](@ref), [`QDReplicaState`](@ref), and
 """
 struct LeapfrogComplexSingleState{CV, V, W} <: QDSingleState
     state_vector::CV # the current, valid complex state
+    state_vector_previous::CV # the complex state from the previous step
     state_staggered::V # the staggered complex state
     state_staggered_previous::V # the staggered complex state from the previous step
     h_vector::V # scratch vector: (H-S).Psi
@@ -255,6 +252,7 @@ end
  
 function LeapfrogComplexSingleState(v::AbstractDVec{K, Complex{T}}, wm ,id, hamiltonian, shift, time_step) where {K, T<:Real}
     state_vector = copy(v) # Current Complex Vector
+    state_vector_previous = zerovector(state_vector) # Previous Complex Vector
 
     h_vector = zerovector(state_vector)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(state_vector)
@@ -271,14 +269,14 @@ function LeapfrogComplexSingleState(v::AbstractDVec{K, Complex{T}}, wm ,id, hami
     current_scale = 1.0
     
     return LeapfrogComplexSingleState(
-        state_vector, state_staggered, state_staggered_previous,
+        state_vector, state_vector_previous, state_staggered, state_staggered_previous,
         h_vector, h_staggered, working_mem, id, Ref(current_scale)
 )
 end
  
 function advance!(report, state::QDReplicaState, s_state::LeapfrogComplexSingleState, algorithm::DiscretizedEvolution)
 
-    @unpack state_vector, state_staggered, state_staggered_previous, h_vector,
+    @unpack state_vector, state_vector_previous, state_staggered, state_staggered_previous, h_vector,
         h_staggered, working_mem, id, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
@@ -294,18 +292,20 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogComplexSingleS
         working_mem, h_vector, state_vector, hamiltonian
     )
     add!(h_vector, state_vector, -shift)
-    add!(state_staggered, h_vector, -im * time_step) # C(t+dt/2) = C(t-dt/2) - dt.(H-S).C(t) # new staggered
+    add!(state_staggered, h_vector, -im * time_step) # C(t+dt/2) = C(t-dt/2) - i dt.(H-S).C(t) # new staggered
     step_stat_names, step_stat_values, working_mem, h_staggered = apply_operator!(NoCompression(),
         working_mem, h_staggered, state_staggered, hamiltonian
     )
     add!(h_staggered, state_staggered, -shift)
-    add!(state_vector, h_staggered, -im * time_step) # C(t+dt) = C(t) - dt.(H-S).C(t+dt/2) # new integer
+    copy!(state_vector_previous, state_vector) # archive C(t) as the "previous" integer-grid value
+    add!(state_vector, h_staggered, -im * time_step) # C(t+dt) = C(t) - i dt.(H-S).C(t+dt/2) # new integer
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(state_vector, 1)
         scale_names = (:walkers_before_scaling, :scale,)
         scale!(state_vector, scaling_strategy.target_walkers / walkers_prev)
         scale!(state_staggered, scaling_strategy.target_walkers / walkers_prev)
         scale!(state_staggered_previous, scaling_strategy.target_walkers / walkers_prev)
+        scale!(state_vector_previous, scaling_strategy.target_walkers / walkers_prev)
         current_scale[] *= scaling_strategy.target_walkers / walkers_prev
         scale_stats = (walkers_prev, current_scale[],)
     else
@@ -342,37 +342,20 @@ Sentinel type for reporting norm diagnostics for
 [`LeapfrogComplex`](@ref) through `post_step_action`.
 
 The associated post-step action reports four diagnostics. The first two are
-
-
-the ordinary 2-norms of the current integer-grid state ``Cₙ`` and the current
-staggered state ``Cₙ₊₁⁄₂``. The other two are the real/imaginary staggered
-norm combinations, evaluated using the retained pair
-
-``(Cₙ₊₁⁄₂, Cₙ₋₁⁄₂)``:
+the ordinary 2-norms of the current integer-grid state ``C_n`` and the current
+staggered state ``C_{n+1/2}``. The other two are real and imaginary component
+combinations evaluated using the retained staggered pair
+``(C_{n+1/2}, C_{n-1/2})``. Writing ``C_k = R_k + i I_k``, these diagnostics are:
 
 ```math
-
-
-N₁ = √(Cₙ* ⋅ Cₙ),\\
-N₂ = √(Cₙ₊₁⁄₂* ⋅ Cₙ₊₁⁄₂),
-```
-
-```math
-
-
-N₃² = Re(Cₙ) ⋅ Re(Cₙ)
-       + Im(Cₙ₋₁⁄₂) ⋅ Im(Cₙ₊₁⁄₂),\\
-```
-
-```math
-
-
-N₄² = Re(Cₙ₋₁⁄₂) ⋅ Re(Cₙ₊₁⁄₂)
-       + Im(Cₙ) ⋅ Im(Cₙ).
+N_1 = \\sqrt{C_n^* \\cdot C_n},\\\\
+N_2 = \\sqrt{C_{n+1/2}^* \\cdot C_{n+1/2}},\\\\
+N_3 = \\sqrt{R_n \\cdot R_n + I_{n-1/2} \\cdot I_{n+1/2}},\\\\
+N_4 = \\sqrt{R_{n-1/2} \\cdot R_{n+1/2} + I_n \\cdot I_n}.
 ```
 
 The values are returned under the keys `:norm2_1`, `:norm2_2`, `:norm2_3`,
-and `:norm2_4`. Use the projector in a post-step strategy, for example:
+and `:norm2_4`. Usage:
 
 ```julia
 post_step_strategy = Projector(norm2 = Norm2LeapfrogComplexProjector())
@@ -387,10 +370,23 @@ See also [`Rimu.PostStepStrategy`](@extref), [`Rimu.Projector`](@extref), and
 """
 struct Norm2LeapfrogComplexProjector <: Rimu.AbstractProjector end
 
-# Return the component dot products without constructing real- or
-# imaginary-valued temporary vectors:
-#   real_component_dot      = Re(u) ⋅ Re(v)
-#   imaginary_component_dot = Im(u) ⋅ Im(v)
+"""
+    component_dot_products(u, v)
+
+Compute the real and imaginary component dot products of complex-valued vectors
+`u` and `v` without constructing temporary real or imaginary valued vectors.
+
+Returns `(real_component_dot, imaginary_component_dot)`, where:
+
+```math
+D_R(u, v) =Re(u) \\cdot Re(v),\\\\
+D_I(u, v) = Im(u) \\cdot Im(v).
+```
+
+Here, `D_R` and `D_I` denote the real and imaginary component dot products.
+
+See also [`Norm2LeapfrogComplexProjector`](@ref).
+"""
 function component_dot_products(u, v)
     real_component_dot = 0.0
     imaginary_component_dot = 0.0
@@ -402,36 +398,34 @@ function component_dot_products(u, v)
     return real_component_dot, imaginary_component_dot
 end
 
-function Rimu.post_step_action(
-    p::Rimu.Projector{Norm2LeapfrogComplexProjector},
-    s_state::LeapfrogComplexSingleState,
-    _step,
-)
-    @unpack state_vector, state_staggered, state_staggered_previous = s_state
+function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogComplexProjector}, s_state::LeapfrogComplexSingleState,_step)
+    @unpack state_vector, state_vector_previous, state_staggered, state_staggered_previous = s_state
 
     # C_n = R_n + i I_n and C_{n+1/2} = R_{n+1/2} + i I_{n+1/2}.
-    # N_1 = sqrt(C_n* ⋅ C_n), N_2 = sqrt(C_{n+1/2}* ⋅ C_{n+1/2}).
-    current_state_norm = sqrt(max(0.0, real(dot(state_vector, state_vector))))
-    staggered_state_norm = sqrt(max(0.0, real(dot(state_staggered, state_staggered))))
+
+    # N_1 = sqrt(C_n* ⋅ C_n).
+    # N_2 = sqrt(C_{n+1/2}* ⋅ C_{n+1/2}).
+    current_state_norm = norm(state_vector, 2)
+    staggered_state_norm = norm(state_staggered, 2)
 
     # C_{n-1/2} is retained in state_staggered_previous.
     current_real_self, current_imag_self = component_dot_products(
-        state_vector, state_vector
+        state_vector_previous, state_vector_previous
     )
     previous_real_current_real, previous_imag_current_imag = component_dot_products(
         state_staggered_previous, state_staggered
     )
 
-    # N_3^2 = R_n·R_n + I_{n-1/2}·I_{n+1/2}.
+    # N_3 = sqrt(R_n·R_n + I_{n-1/2}·I_{n+1/2}).
     staggered_norm_left = sqrt(max(
         0.0, current_real_self + previous_imag_current_imag
     ))
 
-    # N_4^2 = R_{n-1/2}·R_{n+1/2} + I_n·I_n.
+    # N_4 = sqrt(R_{n-1/2}·R_{n+1/2} + I_n·I_n).
     staggered_norm_right = sqrt(max(
         0.0, previous_real_current_real + current_imag_self
     ))
-
+    
     return (
         :norm2_1 => current_state_norm,
         :norm2_2 => staggered_state_norm,

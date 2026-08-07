@@ -23,4 +23,5 @@ ProductSingleState
 ExactSingleState
 TimeStepParameters
 advance!
+component_dot_products
 ```
