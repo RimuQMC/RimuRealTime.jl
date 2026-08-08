@@ -13,31 +13,31 @@ using ExplicitImports: check_no_implicit_imports
     ) === nothing
 end
 
-@safetestset "TimeEvolutionOperators" begin
+@safetestset "TimeEvolutionOperators Test" begin
     include("TimeEvolutionOperatorsTest.jl")
 end
 
-@safetestset "Clock" begin
+@safetestset "Clock Test" begin
     include("ClockTest.jl")
 end
 
-@safetestset "ExponentialSampler" begin
+@safetestset "ExponentialSampler Test" begin
     include("ExponentialSamplerTest.jl")
 end
 
-@safetestset "QDStates" begin
+@safetestset "QDStates Test" begin
     include("QDStatesTest.jl")
 end
 
-@safetestset "QuantumDynamics" begin
+@safetestset "QuantumDynamics Test" begin
     include("QuantumDynamicsTest.jl")
 end
 
-@safetestset "NormProjectors" begin
+@safetestset "NormProjectors Test" begin
     include("NormProjectorTest.jl")
 end
 
-@safetestset "MultiReplicaAlgorithm" begin
+@safetestset "MultiReplicaAlgorithm Test" begin
     include("MultiReplicaTest.jl")
 end
 

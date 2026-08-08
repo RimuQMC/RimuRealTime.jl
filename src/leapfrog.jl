@@ -212,8 +212,8 @@ C_{-3/2} = C_0 + \\frac{3 i \\Delta t}{2}(H-S) C_0.
 At each step, the staggered state and integer-grid state are advanced according to
 
 ```math
-C_{n+1/2} = C_{n-1/2} - i \\Delta t (H-S) C_n,\\\\
-C_{n+1} = C_n - i \\Delta t (H-S) C_{n+1/2}.
+C_{n+1/2} = C_{n-1/2} - i \\Delta t (H-S) C_n\\\\
+C_{n+1} = C_n - i \\Delta t (H-S) C_{n+1/2}
 ```
 
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
@@ -348,10 +348,10 @@ combinations evaluated using the retained staggered pair
 ``(C_{n+1/2}, C_{n-1/2})``. Writing ``C_k = R_k + i I_k``, these diagnostics are:
 
 ```math
-N_1 = \\sqrt{C_n^* \\cdot C_n},\\\\
-N_2 = \\sqrt{C_{n+1/2}^* \\cdot C_{n+1/2}},\\\\
-N_3 = \\sqrt{R_n \\cdot R_n + I_{n-1/2} \\cdot I_{n+1/2}},\\\\
-N_4 = \\sqrt{R_{n-1/2} \\cdot R_{n+1/2} + I_n \\cdot I_n}.
+N_1 = \\sqrt{C_n^* \\cdot C_n}\\\\
+N_2 = \\sqrt{C_{n+1/2}^* \\cdot C_{n+1/2}}\\\\
+N_3 = \\sqrt{R_n \\cdot R_n + I_{n-1/2} \\cdot I_{n+1/2}}\\\\
+N_4 = \\sqrt{R_{n-1/2} \\cdot R_{n+1/2} + I_n \\cdot I_n}
 ```
 
 The values are returned under the keys `:norm2_1`, `:norm2_2`, `:norm2_3`,
@@ -379,8 +379,8 @@ Compute the real and imaginary component dot products of complex-valued vectors
 Returns `(real_component_dot, imaginary_component_dot)`, where:
 
 ```math
-D_R(u, v) =Re(u) \\cdot Re(v),\\\\
-D_I(u, v) = Im(u) \\cdot Im(v).
+D_R(u, v) =Re(u) \\cdot Re(v)\\\\
+D_I(u, v) = Im(u) \\cdot Im(v)
 ```
 
 Here, `D_R` and `D_I` denote the real and imaginary component dot products.
@@ -401,10 +401,10 @@ end
 function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogComplexProjector}, s_state::LeapfrogComplexSingleState,_step)
     @unpack state_vector, state_vector_previous, state_staggered, state_staggered_previous = s_state
 
-    # C_n = R_n + i I_n and C_{n+1/2} = R_{n+1/2} + i I_{n+1/2}.
+    # C_n = R_n + i I_n and C_{n+1/2} = R_{n+1/2} + i I_{n+1/2}
 
-    # N_1 = sqrt(C_n* ⋅ C_n).
-    # N_2 = sqrt(C_{n+1/2}* ⋅ C_{n+1/2}).
+    # N_1 = sqrt(C_n* ⋅ C_n)
+    # N_2 = sqrt(C_{n+1/2}* ⋅ C_{n+1/2})
     current_state_norm = norm(state_vector, 2)
     staggered_state_norm = norm(state_staggered, 2)
 
