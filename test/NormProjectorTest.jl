@@ -63,22 +63,20 @@ end
         v, working_memory(v), "", hamiltonian, shift, time_step
             )
     copy!(state.state_vector_previous, v)
-    copy!(state.state_staggered_previous, v)
-
     copy!(state.state_staggered, (2.0 - im) * v)
 
     projector = Rimu.Projector(projector=Norm2LeapfrogComplexProjector())
     values = Rimu.post_step_action(projector, state, 1)
 
-    current_real, current_imag = RimuRealTime.component_dot_products(
-        state.state_vector_previous, state.state_vector_previous
+    cross_real, cross_imag = RimuRealTime.component_dot_products(
+        state.state_vector_previous, state.state_vector
     )
     staggered_real, staggered_imag = RimuRealTime.component_dot_products(
-        state.state_staggered_previous, state.state_staggered
+        state.state_staggered, state.state_staggered
     )
     @test values[1].first == :norm2_1
     @test values[1].second ≈ norm(state.state_vector, 2)
-    @test values[2].second ≈ norm(state.state_staggered, 2)
-    @test values[3].second ≈ sqrt(max(0.0, current_real + staggered_imag))
-    @test values[4].second ≈ sqrt(max(0.0, staggered_real + current_imag))
+    @test values[2].second ≈ norm(state.state_vector_previous, 2)
+    @test values[3].second ≈ sqrt(max(0.0, cross_real + staggered_imag))
+    @test values[4].second ≈ sqrt(max(0.0, staggered_real + cross_imag))
 end

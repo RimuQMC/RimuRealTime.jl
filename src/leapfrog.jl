@@ -186,7 +186,11 @@ See [`Rimu.PostStepStrategy`](@extref), [`Rimu.Projector`](@extref),  [`Rimu.Dic
 """
 struct Norm2LeapfrogProjector <: Rimu.AbstractProjector end
 
-function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogProjector}, s_state::LeapfrogSingleState, _step)
+function Rimu.post_step_action(
+    p::Rimu.Projector{Norm2LeapfrogProjector},
+    s_state::LeapfrogSingleState,
+    _
+)
     R  = s_state.state_real
     Ip = s_state.state_imag_staggered
     Im = s_state.state_imag_staggered_previous
@@ -200,23 +204,28 @@ end
 
 [`EvolutionStrategy`](@ref) for evolution with a complex-valued staggered-state
 Leapfrog scheme. Pass `LeapfrogComplex()` to [`QuantumDynamicsProblem`](@ref)
-with the keyword `evolution_strategy` to enable this algorithm. The initial
-staggered states are obtained by Euler estimates at the preceding half-step
-time points,
+with the keyword `evolution_strategy` to enable this algorithm.
 
+At each step, the staggered state and integer-time state are advanced according to
 ```math
-C_{-1/2} = C_0 + \\frac{i \\Delta t}{2}(H-S) C_0,\\\\
-C_{-3/2} = C_0 + \\frac{3 i \\Delta t}{2}(H-S) C_0.
+\\begin{aligned}
+𝐂ₙ₊½ &= 𝐂ₙ₋½ - i dt (𝐇-S) 𝐂ₙ\\\\
+𝐂ₙ₊₁ &= 𝐂ₙ - i dt (𝐇-S) 𝐂ₙ₊½
+\\end{aligned}
 ```
 
-At each step, the staggered state and integer-grid state are advanced according to
-
+At each step of the calculation, three state vectors at different times are available to
+facilitate the calculation of the Visscher norm (see
+[`Norm2LeapfrogComplexProjector`](@ref)). Given a starting vector ``𝐕``, the
+initialisation of the missing time points is performed using Euler steps:
 ```math
-C_{n+1/2} = C_{n-1/2} - i \\Delta t (H-S) C_n\\\\
-C_{n+1} = C_n - i \\Delta t (H-S) C_{n+1/2}
+\\begin{aligned}
+𝐂₀ &= 𝐕\\\\
+𝐂₋½ &= 𝐂₀ + \\frac{i dt}{2}(𝐇-S) 𝐂₀,\\\\
+𝐂₋₁ &= 𝐂₀ + i dt(𝐇-S) 𝐂₀.
+\\end{aligned}
 ```
-
-Only [`Rimu.ConstantTimeStep`](@extref) is supported.
+The only supported `time_step_strategy` is [`Rimu.ConstantTimeStep`](@extref).
 
 See also [`Leapfrog`](@ref), [`LeapfrogComplexSingleState`](@ref), and
 [`Norm2LeapfrogComplexProjector`](@ref).
@@ -226,85 +235,109 @@ struct LeapfrogComplex <: EvolutionStrategy end
 """
     LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step) <: QDSingleState
 
-Struct holding the complex state, its staggered states, and scratch storage
+Struct holding the complex state, its staggered state, and scratch storage
 required by [`LeapfrogComplex`](@ref) time evolution.
 
 The input `v` must be a complex-valued `AbstractDVec`. `state_vector` stores the
-state on the integer time grid. `state_staggered` and
-`state_staggered_previous` store the states at the preceding half-step and
-three-half-step time points, respectively, and are initialized with Euler
-estimates from the initial state. The staggered pair is retained at each step.
+state on the integer time grid, and `state_vector_previous` retains the state
+from the preceding integer time step. `state_staggered` stores the state at
+the preceding half-step time point. `state_staggered` and `state_vector_previous`
+are both initialized with Euler estimates from the initial state, and are
+updated once per step.
 
 See also [`LeapfrogComplex`](@ref), [`QDReplicaState`](@ref), and
 [`QuantumDynamicsProblem`](@ref).
 """
 struct LeapfrogComplexSingleState{CV, V, W} <: QDSingleState
-    state_vector::CV # the current, valid complex state
-    state_vector_previous::CV # the complex state from the previous step
-    state_staggered::V # the staggered complex state
-    state_staggered_previous::V # the staggered complex state from the previous step
-    h_vector::V # scratch vector: (H-S).Psi
-    h_staggered::V # scratch vector: (H-S).Psi_staggered
+    state_vector::CV # 𝐂(t), the current complex state
+    state_vector_previous::CV # 𝐂(t - dt), the state from the previous step
+    state_staggered::V # 𝐂(t - dt/2), the staggered complex state
+    # Scratch vector for applying (𝐇-S) to state_vector or state_staggered.
+    scratch_vector::V
     working_mem::W
     id::String
     current_scale::Ref{Float64}
 end
  
-function LeapfrogComplexSingleState(v::AbstractDVec{K, Complex{T}}, wm ,id, hamiltonian, shift, time_step) where {K, T<:Real}
-    state_vector = copy(v) # Current Complex Vector
-    state_vector_previous = zerovector(state_vector) # Previous Complex Vector
+function LeapfrogComplexSingleState(
+    v::AbstractDVec{K, Complex{T}},
+    wm,
+    id,
+    hamiltonian,
+    shift,
+    time_step
+) where {K, T<:Real}
+    state_vector = copy(v) # 𝐂(0), current complex vector
 
-    h_vector = zerovector(state_vector)
+    # scratch_vector = (𝐇 - S) * state_vector
+    scratch_vector = zerovector(state_vector)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(state_vector)
-    _, _, working_mem, h_vector = apply_operator!(working_mem, h_vector, state_vector, hamiltonian)
-    add!(h_vector, state_vector, -shift)
+    _, _, working_mem, scratch_vector = apply_operator!(
+        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian
+    )
+    add!(scratch_vector, state_vector, -shift)
 
+    # Initialize 𝐂₋½ = [1 + i dt / 2 (𝐇-S)] 𝐂₀ with a half-step Euler estimate.
     state_staggered = copy(state_vector)
-    add!(state_staggered, h_vector, +im * time_step / 2) # C_{-1/2} = [1 + i dt / 2 (H-S)] C_0 (Euler step)
+    add!(state_staggered, scratch_vector, +im * time_step / 2)
+    compress!(state_staggered)
 
-    state_staggered_previous = copy(state_vector)
-    add!(state_staggered_previous, h_vector, + 3im * time_step / 2) # C_{-3/2} = [1 + 3 i dt / 2 (H-S)] C_0 (Euler step)
+    # Initialize 𝐂₋₁ = [1 + i dt (𝐇-S)] 𝐂₀ with a full-step Euler estimate.
+    state_vector_previous = copy(state_vector)
+    add!(state_vector_previous, scratch_vector, +im * time_step)
+    compress!(state_vector_previous)
 
-    h_staggered = zerovector(state_vector)
     current_scale = 1.0
-    
+
     return LeapfrogComplexSingleState(
-        state_vector, state_vector_previous, state_staggered, state_staggered_previous,
-        h_vector, h_staggered, working_mem, id, Ref(current_scale)
-)
+        state_vector, state_vector_previous, state_staggered,
+        scratch_vector, working_mem, id, Ref(current_scale)
+    )
 end
  
-function advance!(report, state::QDReplicaState, s_state::LeapfrogComplexSingleState, algorithm::DiscretizedEvolution)
-
-    @unpack state_vector, state_vector_previous, state_staggered, state_staggered_previous, h_vector,
-        h_staggered, working_mem, id, current_scale = s_state
+function advance!(
+    report,
+    state::QDReplicaState,
+    s_state::LeapfrogComplexSingleState,
+    algorithm::DiscretizedEvolution
+)
+    @unpack state_vector, state_vector_previous, state_staggered, scratch_vector,
+        working_mem, id, current_scale = s_state
+    # state_vector == 𝐂(t)
+    # state_vector_previous == 𝐂(t - dt)
+    # state_staggered == 𝐂(t - dt/2)
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
     @unpack scaling_strategy = algorithm
     time_step_strategy = algorithm.time_step_strategy
     step = state.step[]
 
-    @assert time_step_strategy isa ConstantTimeStep "Only constant time step is currently implemented for Leapfrog"
-    
-    copy!(state_staggered_previous, state_staggered) # archive C(t-dt/2) as the "previous" staggered value
+    @assert(
+        time_step_strategy isa ConstantTimeStep,
+        "Only constant time step is currently implemented for Leapfrog"
+    )
 
-    step_stat_names, step_stat_values, working_mem, h_vector = apply_operator!(NoCompression(),
-        working_mem, h_vector, state_vector, hamiltonian
+    # Update the staggered vector: 𝐂(t+dt/2) = 𝐂(t-dt/2) - i dt.(𝐇-S).𝐂(t).
+    step_stat_names, step_stat_values, working_mem, scratch_vector = apply_operator!(
+        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian
     )
-    add!(h_vector, state_vector, -shift)
-    add!(state_staggered, h_vector, -im * time_step) # C(t+dt/2) = C(t-dt/2) - i dt.(H-S).C(t) # new staggered
-    step_stat_names, step_stat_values, working_mem, h_staggered = apply_operator!(NoCompression(),
-        working_mem, h_staggered, state_staggered, hamiltonian
+    add!(scratch_vector, state_vector, -shift)
+    add!(state_staggered, scratch_vector, -im * time_step)
+
+    # Archive 𝐂(t) as the previous integer-grid value.
+    copy!(state_vector_previous, state_vector)
+
+    # Update the integer state: 𝐂(t+dt) = 𝐂(t) - i dt.(𝐇-S).𝐂(t+dt/2).
+    step_stat_names, step_stat_values, working_mem, scratch_vector = apply_operator!(
+        NoCompression(), working_mem, scratch_vector, state_staggered, hamiltonian
     )
-    add!(h_staggered, state_staggered, -shift)
-    copy!(state_vector_previous, state_vector) # archive C(t) as the "previous" integer-grid value
-    add!(state_vector, h_staggered, -im * time_step) # C(t+dt) = C(t) - i dt.(H-S).C(t+dt/2) # new integer
+    add!(scratch_vector, state_staggered, -shift)
+    add!(state_vector, scratch_vector, -im * time_step)
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(state_vector, 1)
         scale_names = (:walkers_before_scaling, :scale,)
         scale!(state_vector, scaling_strategy.target_walkers / walkers_prev)
         scale!(state_staggered, scaling_strategy.target_walkers / walkers_prev)
-        scale!(state_staggered_previous, scaling_strategy.target_walkers / walkers_prev)
         scale!(state_vector_previous, scaling_strategy.target_walkers / walkers_prev)
         current_scale[] *= scaling_strategy.target_walkers / walkers_prev
         scale_stats = (walkers_prev, current_scale[],)
@@ -312,9 +345,12 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogComplexSingleS
         scale_names = ()
         scale_stats = ()
     end
-    
-    
-    comp_name = CompressionStrategy(state_vector) isa NoCompression ? () : (:len_before_compression,)
+
+    comp_name = if CompressionStrategy(state_vector) isa NoCompression
+        ()
+    else
+        (:len_before_compression,)
+    end
     comp_stat = compress!(state_vector)
     compress!(state_staggered)
     names = (step_stat_names..., comp_name..., scale_names...)
@@ -342,16 +378,19 @@ Sentinel type for reporting norm diagnostics for
 [`LeapfrogComplex`](@ref) through `post_step_action`.
 
 The associated post-step action reports four diagnostics. The first two are
-the ordinary 2-norms of the current integer-grid state ``C_n`` and the current
-staggered state ``C_{n+1/2}``. The other two are real and imaginary component
-combinations evaluated using the retained staggered pair
-``(C_{n+1/2}, C_{n-1/2})``. Writing ``C_k = R_k + i I_k``, these diagnostics are:
+the ordinary 2-norms of the current integer-grid state ``𝐂ₙ`` and the
+previous integer-grid state ``𝐂ₙ₋₁``. The other two are real and imaginary
+component combinations evaluated using ``𝐂ₙ``, ``𝐂ₙ₋₁``, and the retained
+staggered state ``𝐂ₙ₋½``. Writing ``𝐂ₖ = 𝐑ₖ + i 𝐈ₖ``, these
+diagnostics are:
 
 ```math
-N_1 = \\sqrt{C_n^* \\cdot C_n}\\\\
-N_2 = \\sqrt{C_{n+1/2}^* \\cdot C_{n+1/2}}\\\\
-N_3 = \\sqrt{R_n \\cdot R_n + I_{n-1/2} \\cdot I_{n+1/2}}\\\\
-N_4 = \\sqrt{R_{n-1/2} \\cdot R_{n+1/2} + I_n \\cdot I_n}
+\\begin{aligned}
+N₁^2 &= 𝐂ₙ^† 𝐂ₙ\\\\
+N₂^2 &= 𝐂ₙ₋₁^† 𝐂ₙ₋₁\\\\
+N₃^2 &= 𝐑ₙ₋₁^† 𝐑ₙ + 𝐈ₙ₋½^† 𝐈ₙ₋½\\\\
+N₄^2 &= 𝐑ₙ₋½^† 𝐑ₙ₋½ + 𝐈ₙ₋₁^† 𝐈ₙ
+\\end{aligned}
 ```
 
 The values are returned under the keys `:norm2_1`, `:norm2_2`, `:norm2_3`,
@@ -392,48 +431,62 @@ function component_dot_products(u, v)
     imaginary_component_dot = 0.0
     for (key, u_value) in pairs(u)
         v_value = v[key]
-        real_component_dot = muladd(real(u_value), real(v_value), real_component_dot)
-        imaginary_component_dot = muladd(imag(u_value), imag(v_value), imaginary_component_dot)
+        real_component_dot = muladd(
+            real(u_value), real(v_value), real_component_dot
+        )
+        imaginary_component_dot = muladd(
+            imag(u_value), imag(v_value), imaginary_component_dot
+        )
     end
     return real_component_dot, imaginary_component_dot
 end
 
-function Rimu.post_step_action(p::Rimu.Projector{Norm2LeapfrogComplexProjector}, s_state::LeapfrogComplexSingleState,_step)
-    @unpack state_vector, state_vector_previous, state_staggered, state_staggered_previous = s_state
+function Rimu.post_step_action(
+    p::Rimu.Projector{Norm2LeapfrogComplexProjector},
+    s_state::LeapfrogComplexSingleState,
+    _
+)
+    @unpack state_vector, state_vector_previous, state_staggered = s_state
 
-    # C_n = R_n + i I_n and C_{n+1/2} = R_{n+1/2} + i I_{n+1/2}
+    # 𝐂ₙ = 𝐑ₙ + i𝐈ₙ and 𝐂ₙ₋₁ = 𝐑ₙ₋₁ + i𝐈ₙ₋₁.
 
-    # N_1 = sqrt(C_n* ⋅ C_n)
-    # N_2 = sqrt(C_{n+1/2}* ⋅ C_{n+1/2})
+    # N₁ = sqrt(𝐂ₙ† ⋅ 𝐂ₙ)
+    # N₂ = sqrt(𝐂ₙ₋₁† ⋅ 𝐂ₙ₋₁)
     current_state_norm = norm(state_vector, 2)
-    staggered_state_norm = norm(state_staggered, 2)
+    previous_state_norm = norm(state_vector_previous, 2)
 
-    # C_{n-1/2} is retained in state_staggered_previous.
-    current_real_self, current_imag_self = component_dot_products(
-        state_vector_previous, state_vector_previous
-    )
-    previous_real_current_real, previous_imag_current_imag = component_dot_products(
-        state_staggered_previous, state_staggered
+    cross_real, cross_imag = component_dot_products(state_vector_previous, state_vector)
+    staggered_real_self, staggered_imag_self = component_dot_products(
+        state_staggered, state_staggered
     )
 
-    # N_3 = sqrt(R_n·R_n + I_{n-1/2}·I_{n+1/2}).
+    # N₃ = sqrt(𝐑ₙ₋₁·𝐑ₙ + 𝐈ₙ₋½·𝐈ₙ₋½).
     staggered_norm_left = sqrt(max(
-        0.0, current_real_self + previous_imag_current_imag
+        0.0, cross_real + staggered_imag_self
     ))
 
-    # N_4 = sqrt(R_{n-1/2}·R_{n+1/2} + I_n·I_n).
+    # N₄ = sqrt(𝐑ₙ₋½·𝐑ₙ₋½ + 𝐈ₙ₋₁·𝐈ₙ).
     staggered_norm_right = sqrt(max(
-        0.0, previous_real_current_real + current_imag_self
+        0.0, staggered_real_self + cross_imag
     ))
-    
+
     return (
         :norm2_1 => current_state_norm,
-        :norm2_2 => staggered_state_norm,
+        :norm2_2 => previous_state_norm,
         :norm2_3 => staggered_norm_left,
         :norm2_4 => staggered_norm_right
     )
 end
 
-function create_single_state(es::LeapfrogComplex, algorithm, v, wm, id, hamiltonian, shift, time_step)
+function create_single_state(
+    es::LeapfrogComplex,
+    algorithm,
+    v,
+    wm,
+    id,
+    hamiltonian,
+    shift,
+    time_step
+)
     return LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step)
 end

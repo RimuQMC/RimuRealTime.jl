@@ -271,7 +271,6 @@ end
     expected_vector = v - im * time_step * (hamiltonian * expected_staggered - shift * expected_staggered)
 
     @test s_state.state_vector_previous ≈ v
-    @test s_state.state_staggered_previous ≈ v + im * time_step / 2 * h_v
     @test s_state.state_staggered ≈ expected_staggered
     @test s_state.state_vector ≈ expected_vector
 end
@@ -313,7 +312,7 @@ end
     s_state = sim.state[1]
     zerovector!(s_state.state_vector)
     zerovector!(s_state.state_staggered)
-    zerovector!(s_state.state_staggered_previous)
+    zerovector!(s_state.state_vector_previous)
 
     @test_logs (:error, r"is dead\. Aborting\.") match_mode=:any solve!(sim)
 end

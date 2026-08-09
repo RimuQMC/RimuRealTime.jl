@@ -24,9 +24,9 @@ using Test
     Leapfrog_complex_state = LeapfrogComplexSingleState(v_leapfrog_complex, working_memory(v_leapfrog_complex), "", hamiltonian, shift, 0.01)
     @test Leapfrog_complex_state.state_vector == v_leapfrog_complex
     @test Leapfrog_complex_state.state_vector !== v_leapfrog_complex
-    @test Leapfrog_complex_state.state_vector_previous == zerovector(v_leapfrog_complex)
-    @test Leapfrog_complex_state.state_staggered ≈ v_leapfrog_complex + im * 0.01/2 * (hamiltonian*v_leapfrog_complex - shift*v_leapfrog_complex) 
-    @test Leapfrog_complex_state.state_staggered_previous ≈ v_leapfrog_complex + 3.0*im * 0.01/2 * (hamiltonian*v_leapfrog_complex - shift*v_leapfrog_complex)
+    h_v_leapfrog_complex = hamiltonian * v_leapfrog_complex - shift * v_leapfrog_complex
+    @test Leapfrog_complex_state.state_vector_previous ≈ v_leapfrog_complex + im * 0.01 * h_v_leapfrog_complex
+    @test Leapfrog_complex_state.state_staggered ≈ v_leapfrog_complex + im * 0.01 / 2 * h_v_leapfrog_complex
 
     v_stochastic = DVec(address => 1.0; style=IsDynamicSemistochastic())
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
