@@ -346,11 +346,7 @@ function advance!(
         scale_stats = ()
     end
 
-    comp_name = if CompressionStrategy(state_vector) isa NoCompression
-        ()
-    else
-        (:len_before_compression,)
-    end
+    comp_name = CompressionStrategy(state_vector) isa NoCompression ? () : (:len_before_compression,)
     comp_stat = compress!(state_vector)
     compress!(state_staggered)
     names = (step_stat_names..., comp_name..., scale_names...)
