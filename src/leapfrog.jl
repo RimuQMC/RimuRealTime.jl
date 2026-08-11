@@ -5,20 +5,24 @@
 Pass `Leapfrog()` to [`QuantumDynamicsProblem`](@ref) with the keyword
 `evolution_strategy` to enable this algorithm.
 The real and imaginary parts of the state vector are propagated on staggered time grids
-according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415)::
+according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415):
 ```math
-R_{n+1} = R_n + Δt(H - S)I_{n+1/2}\\\\
-I_{n+1/2} = I_{n-1/2} - Δt(H - S)R_n
+\\begin{aligned}
+𝐑_{n+1} &= 𝐑_n + dt(𝐇 - S)𝐈_{n+1/2}\\\\
+𝐈_{n+1/2} &= 𝐈_{n-1/2} - dt(𝐇 - S)𝐑_n
+\\end{aligned}
 ```
 where ``S`` is the shift. Note that [`Norm2LeapfrogProjector`](@ref) is available as a
 specialised [`Rimu.PostStepStrategy`](@extref) to compute a conserved 2-norm for
 `Leapfrog` time evolution.
 
-For a general complex initial state ``Ψ_0 = R_0 + i I_0``, the staggered imaginary
+For a general complex initial state ``Ψ_0 = 𝐑_0 + i𝐈_0``, the staggered imaginary
 parts are initialised as:
 ```math
-I_{+1/2} = I_0 - \\frac{Δt}{2}(H-S)R_0\\\\
-I_{-1/2} = I_0 + \\frac{Δt}{2}(H-S)R_0
+\\begin{aligned}
+𝐈_{+1/2} &= 𝐈_0 - \\frac{dt}{2}(𝐇-S)𝐑_0\\\\
+𝐈_{-1/2} &= 𝐈_0 + \\frac{dt}{2}(𝐇-S)𝐑_0
+\\end{aligned}
 ```
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
 
@@ -35,11 +39,11 @@ parts are extracted into separate real-valued vectors, enabling real-arithmetic 
 on all staggered fields.
 
 The staggered imaginary parts are initialised from the general complex initial state
-``Ψ_0 = R_0 + i I_0`` as:
+``Ψ_0 = 𝐑_0 + i𝐈_0`` as:
 ```math
-I_{\\pm 1/2} = I_0 \\mp \\frac{Δt}{2}(H-S)R_0
+𝐈_{\\pm 1/2} = 𝐈_0 \\mp \\frac{dt}{2}(𝐇-S)𝐑_0
 ```
-The bracketing pair ``(I_{n+1/2},\\, I_{n-1/2})`` is retained at each step.
+The bracketing pair ``(𝐈_{n+1/2},\\, 𝐈_{n-1/2})`` is retained at each step.
 
 See [`Leapfrog`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
 """
@@ -172,10 +176,10 @@ Sentinel type for computing the Visscher (1991) conserved staggered two-norm
 when used in `post_step_action` with the [`Leapfrog`](@ref) evolution strategy.
 The conserved norm is
 ```math
-|Ψ|_{\\rm Visscher} = \\sqrt{R_n ⋅ R_n + I_{n+1/2} ⋅ I_{n-1/2}},
+|Ψ|_{\\rm Visscher} = \\sqrt{𝐑_n \\cdot 𝐑_n + 𝐈_{n+1/2} \\cdot 𝐈_{n-1/2}},
 ```
-where ``R_n`` is the real component at integer time step ``n`` , and
-``I_{n \\pm 1/2}`` are the imaginary components at the
+where ``𝐑_n`` is the real component at integer time step ``n``, and
+``𝐈_{n \\pm 1/2}`` are the imaginary components at the
 adjacent half-integer steps of the staggered grid.
 
 Usage:
