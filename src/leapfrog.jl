@@ -8,8 +8,8 @@ The real and imaginary parts of the state vector are propagated on staggered tim
 according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415):
 ```math
 \\begin{aligned}
-𝐑_{n+1} &= 𝐑_n + dt(𝐇 - S)𝐈_{n+1/2}\\\\
-𝐈_{n+1/2} &= 𝐈_{n-1/2} - dt(𝐇 - S)𝐑_n
+𝐑_{n+1} &= 𝐑_n + dt(𝐇 - S)𝐈_{n+½}\\\\
+𝐈_{n+½} &= 𝐈_{n-½} - dt(𝐇 - S)𝐑_n
 \\end{aligned}
 ```
 where ``S`` is the shift. Note that [`Norm2LeapfrogProjector`](@ref) is available as a
@@ -20,8 +20,8 @@ For a general complex initial state ``Ψ_0 = 𝐑_0 + i𝐈_0``, the staggered i
 parts are initialised as:
 ```math
 \\begin{aligned}
-𝐈_{+1/2} &= 𝐈_0 - \\frac{dt}{2}(𝐇-S)𝐑_0\\\\
-𝐈_{-1/2} &= 𝐈_0 + \\frac{dt}{2}(𝐇-S)𝐑_0
+𝐈_{+½} &= 𝐈_0 - \\frac{dt}{2}(𝐇-S)𝐑_0\\\\
+𝐈_{-½} &= 𝐈_0 + \\frac{dt}{2}(𝐇-S)𝐑_0
 \\end{aligned}
 ```
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
@@ -41,9 +41,9 @@ on all staggered fields.
 The staggered imaginary parts are initialised from the general complex initial state
 ``Ψ_0 = 𝐑_0 + i𝐈_0`` as:
 ```math
-𝐈_{\\pm 1/2} = 𝐈_0 \\mp \\frac{dt}{2}(𝐇-S)𝐑_0
+𝐈_{\\pm ½} = 𝐈_0 \\mp \\frac{dt}{2}(𝐇-S)𝐑_0
 ```
-The bracketing pair ``(𝐈_{n+1/2},\\, 𝐈_{n-1/2})`` is retained at each step.
+The bracketing pair ``(𝐈_{n+½},\\, 𝐈_{n-½})`` is retained at each step.
 
 See [`Leapfrog`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
 """
@@ -176,10 +176,10 @@ Sentinel type for computing the Visscher (1991) conserved staggered two-norm
 when used in `post_step_action` with the [`Leapfrog`](@ref) evolution strategy.
 The conserved norm is
 ```math
-|Ψ|_{\\rm Visscher} = \\sqrt{𝐑_n \\cdot 𝐑_n + 𝐈_{n+1/2} \\cdot 𝐈_{n-1/2}},
+|Ψ|_{\\rm Visscher} = \\sqrt{𝐑_n \\cdot 𝐑_n + 𝐈_{n+½} \\cdot 𝐈_{n-½}},
 ```
 where ``𝐑_n`` is the real component at integer time step ``n``, and
-``𝐈_{n \\pm 1/2}`` are the imaginary components at the
+``𝐈_{n \\pm ½}`` are the imaginary components at the
 adjacent half-integer steps of the staggered grid.
 
 Usage:
