@@ -27,6 +27,8 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     maximum_mode_occupation
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
+using StaticArrays: StaticArrays
+
 
 
 const PACKAGE_NAME = "RimuRealTime"

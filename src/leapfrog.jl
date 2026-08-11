@@ -209,8 +209,8 @@ with the keyword `evolution_strategy` to enable this algorithm.
 At each step, the staggered state and integer-time state are advanced according to
 ```math
 \\begin{aligned}
-𝐂ₙ₊½ &= 𝐂ₙ₋½ - i dt (𝐇-S) 𝐂ₙ\\\\
-𝐂ₙ₊₁ &= 𝐂ₙ - i dt (𝐇-S) 𝐂ₙ₊½
+𝐂_{n+½} &= 𝐂_{n-½} - i dt (𝐇-S) 𝐂ₙ\\\\
+𝐂ₙ₊₁ &= 𝐂ₙ - i dt (𝐇-S) 𝐂_{n+½}
 \\end{aligned}
 ```
 
@@ -221,7 +221,7 @@ initialisation of the missing time points is performed using Euler steps:
 ```math
 \\begin{aligned}
 𝐂₀ &= 𝐕\\\\
-𝐂₋½ &= 𝐂₀ + \\frac{i dt}{2}(𝐇-S) 𝐂₀,\\\\
+𝐂_{-½} &= 𝐂₀ + \\frac{i dt}{2}(𝐇-S) 𝐂₀,\\\\
 𝐂₋₁ &= 𝐂₀ + i dt(𝐇-S) 𝐂₀.
 \\end{aligned}
 ```
@@ -377,15 +377,15 @@ The associated post-step action reports four diagnostics. The first two are
 the ordinary 2-norms of the current integer-grid state ``𝐂ₙ`` and the
 previous integer-grid state ``𝐂ₙ₋₁``. The other two are real and imaginary
 component combinations evaluated using ``𝐂ₙ``, ``𝐂ₙ₋₁``, and the retained
-staggered state ``𝐂ₙ₋½``. Writing ``𝐂ₖ = 𝐑ₖ + i 𝐈ₖ``, these
+staggered state ``𝐂_{n-½}``. Writing ``𝐂ₖ = 𝐑ₖ + i 𝐈ₖ``, these
 diagnostics are:
 
 ```math
 \\begin{aligned}
 N₁^2 &= 𝐂ₙ^† 𝐂ₙ\\\\
 N₂^2 &= 𝐂ₙ₋₁^† 𝐂ₙ₋₁\\\\
-N₃^2 &= 𝐑ₙ₋₁^† 𝐑ₙ + 𝐈ₙ₋½^† 𝐈ₙ₋½\\\\
-N₄^2 &= 𝐑ₙ₋½^† 𝐑ₙ₋½ + 𝐈ₙ₋₁^† 𝐈ₙ
+N₃^2 &= 𝐑ₙ₋₁^† 𝐑ₙ + 𝐈_{n-½}^† 𝐈_{n-½}\\\\
+N₄^2 &= 𝐑_{n-½}^† 𝐑_{n-½} + 𝐈ₙ₋₁^† 𝐈ₙ
 \\end{aligned}
 ```
 
@@ -411,28 +411,17 @@ struct Norm2LeapfrogComplexProjector <: Rimu.AbstractProjector end
 Compute the real and imaginary component dot products of complex-valued vectors
 `u` and `v` without constructing temporary real or imaginary valued vectors.
 
-Returns `(real_component_dot, imaginary_component_dot)`, where:
-
-```math
-D_R(u, v) =Re(u) \\cdot Re(v)\\\\
-D_I(u, v) = Im(u) \\cdot Im(v)
-```
-
-Here, `D_R` and `D_I` denote the real and imaginary component dot products.
+Returns the tuple ``(ℜ(𝐮)⋅ℜ(𝐯), ℑ(𝐮)⋅ℑ(𝐯))`` with the real and imaginary part 
+dot products, respectively.
 
 See also [`Norm2LeapfrogComplexProjector`](@ref).
 """
 function component_dot_products(u, v)
-    real_component_dot = 0.0
-    imaginary_component_dot = 0.0
-    for (key, u_value) in pairs(u)
+    real_component_dot, imaginary_component_dot = sum(
+        pairs(u); init = StaticArrays.SVector(0.0, 0.0)
+    ) do (key, u_value)
         v_value = v[key]
-        real_component_dot = muladd(
-            real(u_value), real(v_value), real_component_dot
-        )
-        imaginary_component_dot = muladd(
-            imag(u_value), imag(v_value), imaginary_component_dot
-        )
+        StaticArrays.SVector(real(u_value) * real(v_value), imag(u_value) * imag(v_value))
     end
     return real_component_dot, imaginary_component_dot
 end
