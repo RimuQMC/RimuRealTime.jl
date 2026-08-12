@@ -9,7 +9,7 @@ according to [P. B. Visscher (1991)](https://doi.org/10.1063/1.168415):
 ```math
 \\begin{aligned}
 𝐑_{n+1} &= 𝐑_n + dt(𝐇 - S)𝐈_{n+½}\\\\
-𝐈_{n+½} &= 𝐈_{n-½} - dt(𝐇 - S)𝐑_n
+𝐈_{n+1½} &= 𝐈_{n+½} - dt(𝐇 - S)𝐑_{n+1}
 \\end{aligned}
 ```
 where ``S`` is the shift. Note that [`Norm2LeapfrogProjector`](@ref) is available as a
