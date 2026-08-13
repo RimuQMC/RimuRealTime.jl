@@ -44,7 +44,7 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algo
     time_step_strategy = algorithm.time_step_strategy
     step = state.step[]
 
-    step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(
+    step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(NoCompression(),
         working_mem, previous_vector, state_vector, evolution_operator
     )
     add!(previous_vector, state_vector, im*shift*time_step)
