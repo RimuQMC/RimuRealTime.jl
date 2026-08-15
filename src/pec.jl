@@ -4,8 +4,9 @@
 algorithm. This requires only one application of the Hamiltonian per time step. The state
 is updated every time step according to
 ``v_{n+1} = v_n - i \\frac{dt}{2}((1 - d) x_n + (1 + d) x_{n+1})``, where
-``x_{n+1} = H w_{n+1}``, with ``w_{n+1} = v_n - idt x_n``. The vector ``x`` is initialized
-as ``x_0 = H v_0``. ``d`` is the `damping` coefficient that modifies the second-order term.
+``x_{n+1} = (H - S) w_{n+1}``, with ``w_{n+1} = v_n - idt x_n`` and ``S`` the energy shift.
+The vector ``x`` is initialized as ``x_0 = (H - S) v_0``. ``d`` is the `damping`
+coefficient that modifies the second-order term.
 Second-order damping can counteract the effects of large spectral components in the
 Hamiltonian that may lead to an unphysical growth of the 2-norm of the state vector.
 """
@@ -34,9 +35,8 @@ function PECSingleState(v, wm, id, hamiltonian, shift, damping=0.0)
     h_predictor = zerovector(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
     names, values, working_mem, h_predictor_old = apply_operator!(
-        NoCompression(), working_mem, zerovector(v), v, hamiltonian
-    )
-    add!(h_predictor_old, v, -shift)
+        NoCompression(), working_mem, zerovector(v), v, hamiltonian - shift * I
+    ) # x_0 = (H - S) * v_0
     current_scale = 1.0
     return PECSingleState(
         state_vector,
@@ -70,9 +70,8 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState, algori
 
     # evaluate
     step_stat_names, step_stat_values, working_mem, h_predictor = apply_operator!(
-        NoCompression(), working_mem, h_predictor, predictor, hamiltonian
-    )
-    add!(h_predictor, predictor, -shift) # x_{n+1} = (H - shift) * w_{n+1}
+        NoCompression(), working_mem, h_predictor, predictor, hamiltonian - shift * I
+    ) # x_{n+1} = (H - S) * w_{n+1}
 
     # corrector step
     add!(state_vector, add!(h_predictor_old, h_predictor, 1+damping, 1-damping), -im*time_step/2)

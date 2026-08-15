@@ -1,12 +1,12 @@
 """
     Euler() <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using the first-order Euler method. In each step
-the state is updated according to ``v_{n+1} = (1 - i H dt)v_n``.
+the state is updated according to ``v_{n+1} = (1 - i (H - S) dt)v_n``, where ``S`` is the energy shift.
 """
 struct Euler <: EvolutionStrategy end
 
 """
-    EulerSingleState(v, wm, id, hamiltonian, time_step) <: QDSingleState
+    EulerSingleState(v, wm, id, hamiltonian, time_step, shift=0.0) <: QDSingleState
 Struct holding state vector and other vectors required for [`Euler`](@ref) time evolution.
 See [`QDReplicaState`](@ref).
 """
@@ -18,11 +18,11 @@ mutable struct EulerSingleState{V,W,U} <: QDSingleState
     id::String
     current_scale::Float64
 end
-function EulerSingleState(v, wm, id, hamiltonian, time_step)
+function EulerSingleState(v, wm, id, hamiltonian, time_step, shift=0.0)
     state_vector = deepcopy(v)
     previous_vector = zerovector(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
-    evolution_operator = FirstOrderTimeEvolution(hamiltonian, time_step)
+    evolution_operator = FirstOrderTimeEvolution(hamiltonian - shift * I, time_step)
     current_scale = 1.0
     return EulerSingleState(
         state_vector,
@@ -47,7 +47,6 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algo
     step_stat_names, step_stat_values, working_mem, previous_vector = apply_operator!(NoCompression(),
         working_mem, previous_vector, state_vector, evolution_operator
     )
-    add!(previous_vector, state_vector, im*shift*time_step)
     state_vector, previous_vector = previous_vector, state_vector
 
     scale_names, scale_stats, current_scale = scale_state_vector!(
@@ -60,7 +59,7 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algo
     stats = (step_stat_values..., comp_stat..., scale_stats...)
 
     if !(time_step_strategy isa ConstantTimeStep)
-        evolution_operator = FirstOrderTimeEvolution(hamiltonian, time_step)
+        evolution_operator = FirstOrderTimeEvolution(hamiltonian - shift * I, time_step)
     end
 
     @pack! s_state = state_vector, previous_vector, evolution_operator, working_mem, id,
@@ -87,5 +86,5 @@ function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algo
 end
 
 function create_single_state(::Euler, algorithm, v, wm, id, hamiltonian, shift, time_step)
-    return EulerSingleState(v, wm, id, hamiltonian, time_step)
+    return EulerSingleState(v, wm, id, hamiltonian, time_step, shift)
 end
