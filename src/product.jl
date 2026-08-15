@@ -1,18 +1,17 @@
 """
     Product(n) <: EvolutionStrategy
 [`EvolutionStrategy`](@ref) for evolution using an `n`th order expansion of the exponential
-time evolution operator ``\\exp(-i (H - S) dt)``, where ``S`` is the energy shift and
-powers of the shifted Hamiltonian are applied using Rimu.HamiltonianProduct.
+time evolution operator ``\\exp(-i H dt)``, where powers of the Hamiltonian are applied
+using Rimu.HamiltonianProduct. This strategy does not support adding an energy shift.
 """
 struct Product <: EvolutionStrategy
     order::Int
 end
 
 """
-    ProductSingleState(v, wm, id, hamiltonian, time_step, order, shift=0.0) <: QDSingleState
+    ProductSingleState(v, wm, id, hamiltonian, time_step, order) <: QDSingleState
 Struct holding state vector and other vectors required for [`Product`](@ref) time
-evolution. The energy `shift` is folded into the evolution operator, which expands
-``\\exp(-i (H - S) dt)`` to the given `order`. See [`QDReplicaState`](@ref).
+evolution. See [`QDReplicaState`](@ref).
 """
 mutable struct ProductSingleState{V,W,U} <: QDSingleState
     state_vector::V
@@ -23,11 +22,11 @@ mutable struct ProductSingleState{V,W,U} <: QDSingleState
     order::Int64
     current_scale::Float64
 end
-function ProductSingleState(v, wm, id, hamiltonian, time_step, order, shift=0.0)
+function ProductSingleState(v, wm, id, hamiltonian, time_step, order)
     state_vector = deepcopy(v)
     previous_vector = zerovector(v)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(v)
-    evolution_operator = NthOrderTimeEvolution(hamiltonian - shift * I, time_step, order)
+    evolution_operator = NthOrderTimeEvolution(hamiltonian, time_step, order)
     current_scale = 1.0
     return ProductSingleState(
         state_vector,
@@ -65,7 +64,7 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState, re
     stats = (step_stat_values..., comp_stat..., scale_stats...)
 
     if !(time_step_strategy isa ConstantTimeStep)
-        evolution_operator = NthOrderTimeEvolution(hamiltonian - shift * I, time_step, order)
+        evolution_operator = NthOrderTimeEvolution(hamiltonian, time_step, order)
     end
 
     @pack! s_state = state_vector, previous_vector, evolution_operator, working_mem, id,
@@ -92,5 +91,5 @@ function advance!(report, state::QDReplicaState, s_state::ProductSingleState, re
 end
 
 function create_single_state(es::Product, algorithm, v, wm, id, hamiltonian, shift, time_step)
-    return ProductSingleState(v, wm, id, hamiltonian, time_step, es.order, shift)
+    return ProductSingleState(v, wm, id, hamiltonian, time_step, es.order)
 end
