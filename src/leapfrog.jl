@@ -478,8 +478,8 @@ reconstructed complex state vectors at the intermediate half-step time point
 
 ```math
 \\begin{aligned}
-\bar{𝐂}_{n-½} &= ½(𝐑ₙ₋₁ + 𝐑ₙ) + i 𝐈_{n-½}\\
-\tilde{𝐂}_{n-½} &= 𝐑_{n-½} + ½ i (𝐈ₙ₋₁ + 𝐈ₙ)
+\\bar{𝐂}_{n-½} &= \\frac{1}{2}(𝐑ₙ₋₁ + 𝐑ₙ) + i 𝐈_{n-½}\\\\
+\\tilde{𝐂}_{n-½} &= 𝐑_{n-½} + \\frac{i}{2}(𝐈ₙ₋₁ + 𝐈ₙ)
 \\end{aligned}
 ```
 
