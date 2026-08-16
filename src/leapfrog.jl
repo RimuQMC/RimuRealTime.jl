@@ -463,6 +463,74 @@ function Rimu.post_step_action(
     )
 end
 
+"""
+    InternalCoherence([name=:internal_coherence]) <: PostStepStrategy
+    InternalCoherence(; [name=:internal_coherence]) <: PostStepStrategy
+
+[`Rimu.PostStepStrategy`](@extref) to compute the internal coherence (sign correlation)
+between the two staggered states of the [`LeapfrogComplex`](@ref).
+
+At each step of the calculation three state vectors are available: the current
+integer-grid state ``𝐂ₙ``, the previous integer-grid state ``𝐂ₙ₋₁``, and the
+retained staggered state ``𝐂_{n-½}``. Writing ``𝐂ₖ = 𝐑ₖ + i 𝐈ₖ``, two
+reconstructed complex state vectors at the intermediate half-step time point
+``n - ½`` (time ``t - dt/2``) are formed:
+
+```math
+\\begin{aligned}
+\bar{𝐂}_{n-½} &= ½(𝐑ₙ₋₁ + 𝐑ₙ) + i 𝐈_{n-½}\\
+\tilde{𝐂}_{n-½} &= 𝐑_{n-½} + ½ i (𝐈ₙ₋₁ + 𝐈ₙ)
+\\end{aligned}
+```
+
+The internal coherence is evaluated using [`Rimu.Hamiltonians.SignCorrelator`](@extref).
+The result is reported under the key `name`, which defaults to `:internal_coherence`.
+
+Usage:
+```julia
+post_step_strategy = InternalCoherence()
+```
+or with a custom column name:
+```julia
+post_step_strategy = InternalCoherence(:my_coherence)
+```
+
+This strategy is specific to [`LeapfrogComplex`](@ref) time evolution.
+
+See also [`LeapfrogComplex`](@ref), [`Rimu.Hamiltonians.SignCorrelator`](@extref), 
+and [`Rimu.PostStepStrategy`](@extref).
+"""
+struct InternalCoherence <: PostStepStrategy
+    name::Symbol
+end
+
+InternalCoherence(; name::Symbol=:internal_coherence) = InternalCoherence(name)
+
+function Rimu.post_step_action(
+    ic::InternalCoherence,
+    s_state::LeapfrogComplexSingleState,
+    _
+)
+    @unpack state_vector, state_vector_previous, state_staggered = s_state
+    ks = union(keys(state_staggered), keys(state_vector), keys(state_vector_previous))
+    c_bar = zerovector(state_staggered)   # C̄_{n-½}
+    c_tilde = zerovector(state_staggered) # C̃_{n-½}
+
+    for k in ks
+        stag, curr, prev = state_staggered[k], state_vector[k], state_vector_previous[k]
+
+        # C̄_{n-½}[k] = ½(𝐑ₙ₋₁[k] + 𝐑ₙ[k]) + i 𝐈_{n-½}[k]
+        c_bar_k   = Complex(0.5 * (real(prev) + real(curr)), imag(stag))
+        # C̃_{n-½}[k] = 𝐑_{n-½}[k] + ½ i (𝐈ₙ₋₁[k] + 𝐈ₙ[k])
+        c_tilde_k = Complex(real(stag), 0.5 * (imag(prev) + imag(curr)))
+
+        iszero(c_bar_k)   || (c_bar[k] = c_bar_k)
+        iszero(c_tilde_k) || (c_tilde[k] = c_tilde_k)
+    end
+    # Internal coherence C̄_{n-½} ⋅ Ŝ ⋅ C̃_{n-½}
+    return (ic.name => dot(c_bar, SignCorrelator(), c_tilde),)
+end
+
 function create_single_state(
     es::LeapfrogComplex,
     algorithm,
