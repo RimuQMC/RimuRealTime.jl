@@ -4,7 +4,7 @@ using RimuRealTime: LeapfrogSingleState, LeapfrogComplexSingleState, PECSingleSt
 using Test
 
 @testset "QDStates" begin
-    address = FermiFS(1, 1, 1, 1, 1, 0, 0, 0, 0, 0)
+    address = FermiFS(1,1,1,1,1,0,0,0,0,0)
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
     problem = QuantumDynamicsProblem(hamiltonian)
@@ -19,8 +19,8 @@ using Test
     @test Leapfrog_state.state_vector === v_complex
     @test Leapfrog_state.state_real == v
     @test Leapfrog_state.state_real !== v
-    @test Leapfrog_state.state_imag_staggered == -0.01 / 2 * (hamiltonian * v - shift * v)
-    @test Leapfrog_state.state_imag_staggered_previous == 0.01 / 2 * (hamiltonian * v - shift * v)
+    @test Leapfrog_state.state_imag_staggered == -0.01/2 * (hamiltonian*v - shift*v)
+    @test Leapfrog_state.state_imag_staggered_previous == 0.01/2 * (hamiltonian*v - shift*v)
 
     Leapfrog_complex_state = LeapfrogComplexSingleState(v_leapfrog_complex, working_memory(v_leapfrog_complex), "", hamiltonian, shift, 0.01)
     @test Leapfrog_complex_state.state_vector == v_leapfrog_complex
@@ -33,7 +33,7 @@ using Test
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
     @test PEC_state.state_vector == v
     @test PEC_state.state_vector !== v
-    @test PEC_state.h_predictor_old == hamiltonian * v - shift * v
+    @test PEC_state.h_predictor_old == hamiltonian*v - shift*v
 
     RK_state = RKSingleState(v, working_memory(v), "", hamiltonian, 0.01)
     @test RK_state.state_vector == v
@@ -65,6 +65,6 @@ using Test
     io = IOBuffer()
     Rimu.print_stats(io, 7, state)
     @test String(take!(io)) == "[ " * lpad(7, 11) * " | time: " *
-                               lpad(round(state.time_step_parameters.time, digits=4), 10) * " | walkers: " *
-                               lpad(round(state.time_step_parameters.prev_walkers, digits=4), 10) * "\n"
+        lpad(round(state.time_step_parameters.time, digits=4), 10) * " | walkers: " *
+        lpad(round(state.time_step_parameters.prev_walkers, digits=4), 10) * "\n"
 end
