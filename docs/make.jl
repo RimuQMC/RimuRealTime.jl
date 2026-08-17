@@ -1,5 +1,6 @@
 using RimuRealTime
 using Documenter
+using DocumenterCodeBlocks
 using DocumenterInterLinks
 
 DocMeta.setdocmeta!(RimuRealTime, :DocTestSetup, :(using RimuRealTime); recursive=true)
@@ -27,13 +28,10 @@ makedocs(;
         ],
         "API"   => "api.md",
     ],
-    plugins = [links]
+    plugins = [links, CodeBlocks()]
 )
 
 deploydocs(
     repo = "github.com/RimuQMC/RimuRealTime.jl.git",
     push_preview = true,
 )
-
-
-
