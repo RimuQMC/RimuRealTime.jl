@@ -1,12 +1,18 @@
 """
     PEC(damping=0) <: EvolutionStrategy
+
 [`EvolutionStrategy`](@ref) for evolution using a second-order predict-evaluate-correct
 algorithm. This requires only one application of the Hamiltonian per time step. The state
 is updated every time step according to
-``v_{n+1} = v_n - i \\frac{dt}{2}((1 - d) x_n + (1 + d) x_{n+1})``, where
-``x_{n+1} = (H - S) w_{n+1}``, with ``w_{n+1} = v_n - idt x_n`` and ``S`` the energy shift.
-The vector ``x`` is initialized as ``x_0 = (H - S) v_0``. ``d`` is the `damping`
-coefficient that modifies the second-order term.
+```math
+\\begin{aligned}
+𝐰_{n+1} &= 𝐯_n - i dt 𝐱_n \\\\
+𝐱_{n+1} &= (𝐇 - S) 𝐰_{n+1} \\\\
+𝐯_{n+1} &= 𝐯_n - \\frac{i dt}{2} [(1 - d) 𝐱_n + (1 + d) 𝐱_{n+1}],
+\\end{aligned}
+```
+where ``S`` is the energy shift. The vector ``𝐱`` is initialized as ``𝐱_0 = (𝐇 - S) 𝐯_0``.
+``d`` is the `damping` coefficient that modifies the second-order term.
 Second-order damping can counteract the effects of large spectral components in the
 Hamiltonian that may lead to an unphysical growth of the 2-norm of the state vector.
 """

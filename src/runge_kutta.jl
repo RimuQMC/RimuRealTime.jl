@@ -1,9 +1,16 @@
 """
     RungeKutta(damping=0) <: EvolutionStrategy
+
 [`EvolutionStrategy`](@ref) for evolution using a second-order Runge-Kutta algorithm. In
-each step the state is updated according to ``v_{n+1} = v_n + u_1 u_2 v_n - u_2 v_n``,
-where ``u1 = 1 - i H dt`` and ``u2 = 1 - (1 + d) i H dt / 2``,
-and ``d`` is the `damping` coefficient that modifies the second-order term. Second-order
+each step the state is updated according to
+```math
+\\begin{aligned}
+𝐯_{n+1} &= 𝐯_n + 𝐔_1 𝐔_2 𝐯_n - 𝐔_2 𝐯_n \\\\
+𝐔_1 &= 1 - i 𝐇 dt \\\\
+𝐔_2 &= 1 - \\frac{1 + d}{2} i 𝐇 dt,
+\\end{aligned}
+```
+where ``d`` is the `damping` coefficient that modifies the second-order term. Second-order
 damping can counteract the effects of large spectral components in the Hamiltonian that may
 lead to an unphysical growth of the 2-norm of the state vector.
 """
