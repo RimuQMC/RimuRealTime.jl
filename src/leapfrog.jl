@@ -52,8 +52,8 @@ struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     state_real::V # real part R(t), on the integer time grid
     state_imag_staggered::V # imaginary part I(t+1/2dt), on the staggered grid
     state_imag_staggered_previous::V # imaginary part I(t-1/2dt), retained from the previous step
-    h_real::V # scratch vector: (H-S).R                     
-    h_imag::V # scratch vector: (H-S).I
+    h_real::V # scratch vector: dt.(H-S).R
+    h_imag::V # scratch vector: dt.(H-S).I
     working_mem::W
     id::String
     current_scale::Ref{Float64}
@@ -65,8 +65,9 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     # Compute (H-S).R_0 for the use in the staggered initialisation
     h_r = zerovector(state_real)
     working_mem_r = wm isa PDWorkingMemory ? wm : working_memory(state_real)
-    _, _, working_mem_r, h_r = apply_operator!(working_mem_r, h_r, state_real, hamiltonian)
-    add!(h_r, state_real, -shift) # h_r = (H-S).R_0
+    _, _, working_mem_r, h_r = apply_operator!(
+        working_mem_r, h_r, state_real, hamiltonian - shift *I
+    ) # h_r = (H-S).R_0
 
     # General staggered initialisation I_{±1/2} = I_0 ∓ 1/2dt.(H-S).R_0
     i0 = zerovector(v) # I_0 = Im(Psi_0)  (zero vector for real initial states)
@@ -109,17 +110,15 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, a
 
     # Advance the real part R(t+dt) = R(t) + dt.(H-S).I(t+1/2dt)
     step_stat_names, step_stat_values, working_mem, h_imag = apply_operator!(NoCompression(),
-        working_mem, h_imag, state_imag_staggered, hamiltonian
-    )
-    add!(h_imag, state_imag_staggered, -shift) # h_imag = (H-S).I(t+1/2dt)
-    add!(state_real, h_imag, time_step) # R(t+dt) = R(t) + dt.h_imag
+        working_mem, h_imag, state_imag_staggered, time_step * (hamiltonian - shift*I)
+    ) # h_imag = dt.(H-S).I(t+1/2dt)
+    add!(state_real, h_imag) # R(t+dt) = R(t) + h_imag
 
     # Advance the imaginary part: I(t+3dt/2) = I(t+1/2dt) - dt.(H-S).R(t+dt)
     step_stat_names, step_stat_values, working_mem, h_real = apply_operator!(NoCompression(),
-        working_mem, h_real, state_real, hamiltonian
-    )
-    add!(h_real, state_real, -shift) # h_real = (H-S).R(t+dt)
-    add!(state_imag_staggered, h_real, -time_step)  # I(t+3dt/2) = I(t+1/2dt) - dt.h_real
+        working_mem, h_real, state_real, -time_step * (hamiltonian - shift*I)
+    ) # h_real = -dt.(H-S).R(t+dt)
+    add!(state_imag_staggered, h_real) # I(t+3dt/2) = I(t+1/2dt) + h_real
 
     # Reconstruct the full complex state at integer time t+dt:
     # Psi(t+dt) = R(t+dt) + i.I(t+dt),  where I(t+dt) = 1/2[I(t+1/2dt) + I(t+3dt/2)]
@@ -273,13 +272,12 @@ function LeapfrogComplexSingleState(
 ) where {K, T<:Real}
     state_vector = copy(v) # 𝐂(0), current complex vector
 
-    # scratch_vector = (𝐇 - S) * state_vector
+    # scratch_vector = (𝐇 - S) * state_vector.
     scratch_vector = zerovector(state_vector)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(state_vector)
     _, _, working_mem, scratch_vector = apply_operator!(
-        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian
+        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian - shift *I
     )
-    add!(scratch_vector, state_vector, -shift)
 
     # Initialize 𝐂₋½ = [1 + i dt / 2 (𝐇-S)] 𝐂₀ with a half-step Euler estimate.
     state_staggered = copy(state_vector)
@@ -323,20 +321,18 @@ function advance!(
 
     # Update the staggered vector: 𝐂(t+dt/2) = 𝐂(t-dt/2) - i dt.(𝐇-S).𝐂(t).
     step_stat_names, step_stat_values, working_mem, scratch_vector = apply_operator!(
-        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian
+        NoCompression(), working_mem, scratch_vector, state_vector, -im * time_step * (hamiltonian - shift * I)
     )
-    add!(scratch_vector, state_vector, -shift)
-    add!(state_staggered, scratch_vector, -im * time_step)
+    add!(state_staggered, scratch_vector)
 
     # Archive 𝐂(t) as the previous integer-grid value.
     copy!(state_vector_previous, state_vector)
 
     # Update the integer state: 𝐂(t+dt) = 𝐂(t) - i dt.(𝐇-S).𝐂(t+dt/2).
     step_stat_names, step_stat_values, working_mem, scratch_vector = apply_operator!(
-        NoCompression(), working_mem, scratch_vector, state_staggered, hamiltonian
+        NoCompression(), working_mem, scratch_vector, state_staggered, -im * time_step * (hamiltonian - shift * I)
     )
-    add!(scratch_vector, state_staggered, -shift)
-    add!(state_vector, scratch_vector, -im * time_step)
+    add!(state_vector, scratch_vector)
     if scaling_strategy isa DynamicScaling
         walkers_prev = norm(state_vector, 1)
         scale_names = (:walkers_before_scaling, :scale,)

@@ -57,21 +57,24 @@ using Test
         end
     end
 
-    time_step_strategy = WalkerControl()
-    problem = QuantumDynamicsProblem(
-        hamiltonian;
-        shift,
-        time_step,
-        time_step_strategy,
-        last_step=100,
-        initial_walkers,
-        replica_strategy,
-        post_step_strategy
-    )
-    sim = solve(problem)
-    df = DataFrame(sim)
-    @test 0.0 <= df.alpha[end] <= pi/2
-    @test df.time[end] isa ComplexF64
+    for evolution_strategy in [PEC(), RungeKutta(), Euler(), Product(2)]
+        time_step_strategy = WalkerControl()
+        problem = QuantumDynamicsProblem(
+            hamiltonian;
+            shift,
+            time_step,
+            time_step_strategy,
+            evolution_strategy,
+            last_step=100,
+            initial_walkers,
+            replica_strategy,
+            post_step_strategy
+        )
+        sim = solve(problem)
+        df = DataFrame(sim)
+        @test 0.0 <= df.alpha[end] <= pi/2
+        @test df.time[end] isa ComplexF64
+    end
 
     style = IsDeterministic{ComplexF64}()
     problem = QuantumDynamicsProblem(

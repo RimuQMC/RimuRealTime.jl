@@ -8,6 +8,7 @@ using Test
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
     problem = QuantumDynamicsProblem(hamiltonian)
+    shift = 0.0
 
     v = DVec(address => 1.0)
     v_complex = DVec(address => 1.0 + 0.0im)
@@ -38,7 +39,7 @@ using Test
     @test RK_state.state_vector == v
     @test RK_state.state_vector !== v
 
-    Euler_state = EulerSingleState(v, working_memory(v), "", hamiltonian, 0.01)
+    Euler_state = EulerSingleState(v, working_memory(v), "")
     @test Euler_state.state_vector == v
     @test Euler_state.state_vector !== v
 
