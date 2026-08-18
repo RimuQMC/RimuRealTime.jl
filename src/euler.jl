@@ -39,7 +39,7 @@ end
 function advance!(report, state::QDReplicaState, s_state::EulerSingleState, algorithm::DiscretizedEvolution)
 
     @unpack state_vector, previous_vector, working_mem, id,
-    current_scale = s_state
+        current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
     @unpack scaling_strategy = algorithm

@@ -61,9 +61,9 @@ end
 Advance the state `s_state` by one step, and write data to the `report`.
 """
 function advance!(report, state::QDReplicaState, s_state::PECSingleState, algorithm::DiscretizedEvolution)
-
+    
     @unpack state_vector, predictor, h_predictor_old, h_predictor, working_mem, id,
-    damping, current_scale = s_state
+        damping, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
     @unpack scaling_strategy = algorithm
@@ -71,7 +71,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState, algori
 
     predictor = add!(zerovector!(predictor), state_vector)
     # predictor step
-    add!(predictor, h_predictor_old, -im * time_step) # w_{n+1} = v_n - i * dt * x_n
+    add!(predictor, h_predictor_old, - im*time_step) # w_{n+1} = v_n - i * dt * x_n
     compress!(predictor)
 
     # evaluate
@@ -80,17 +80,17 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState, algori
     ) # x_{n+1} = (H - S) * w_{n+1}
 
     # corrector step
-    add!(state_vector, add!(h_predictor_old, h_predictor, 1 + damping, 1 - damping), -im * time_step / 2)
+    add!(state_vector, add!(h_predictor_old, h_predictor, 1+damping, 1-damping), -im*time_step/2)
     # v_{n+1} = v_n - i*dt/2 * [(1-d) x_n + (1+d) x_{n+1}]
 
     h_predictor_old, h_predictor = h_predictor, h_predictor_old # swap names of x_{n+1} and x_n for next step
 
     if scaling_strategy isa DynamicScaling
-        walkers_prev = norm(state_vector, 1)
+        walkers_prev = norm(state_vector,1)
         scale_names = (:walkers_before_scaling, :scale,)
-        scale!(state_vector, scaling_strategy.target_walkers / walkers_prev)
-        scale!(h_predictor_old, scaling_strategy.target_walkers / walkers_prev)
-        current_scale *= scaling_strategy.target_walkers / walkers_prev
+        scale!(state_vector, scaling_strategy.target_walkers/walkers_prev)
+        scale!(h_predictor_old, scaling_strategy.target_walkers/walkers_prev)
+        current_scale *= scaling_strategy.target_walkers/walkers_prev
         scale_stats = (walkers_prev, current_scale,)
     else
         scale_names = ()
@@ -103,7 +103,7 @@ function advance!(report, state::QDReplicaState, s_state::PECSingleState, algori
     stats = (step_stat_values..., comp_stat..., scale_stats...)
 
     @pack! s_state = state_vector, predictor, h_predictor_old, h_predictor, working_mem,
-    current_scale
+        current_scale
 
     if step % reporting_interval(reporting_strategy) == 0
         walkers, len = walkernumber_and_length(state_vector)
