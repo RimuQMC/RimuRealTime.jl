@@ -483,7 +483,6 @@ reconstructed complex state vectors at the intermediate half-step time point
 \\end{aligned}
 ```
 
-The internal coherence is evaluated using [`Rimu.Hamiltonians.SignCorrelator`](@extref).
 The result is reported under the key `name`, which defaults to `:internal_coherence`.
 
 Usage:
@@ -512,10 +511,10 @@ function Rimu.post_step_action(
     _
 )
     @unpack state_vector, state_vector_previous, state_staggered = s_state
-    ks = intersect(keys(state_staggered), keys(state_vector), keys(state_vector_previous))
 
-    accumulator, nonzeros = sum(ks; init=Rimu.MultiScalar(zero(ComplexF64), 0)) do k
-        stag, curr, prev = state_staggered[k], state_vector[k], state_vector_previous[k]
+    accumulator, nonzeros = sum(pairs(state_vector);
+        init=Rimu.MultiScalar(zero(ComplexF64), 0)) do ((k, curr))
+        stag, prev = state_staggered[k], state_vector_previous[k]
 
         # C̄_{n-½}[k] = ½(𝐑ₙ₋₁[k] + 𝐑ₙ[k]) + i 𝐈_{n-½}[k]
         c_bar_k = Complex(0.5 * (real(prev) + real(curr)), imag(stag))

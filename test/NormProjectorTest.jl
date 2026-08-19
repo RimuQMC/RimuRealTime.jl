@@ -110,17 +110,6 @@ end
 
     a1 = FermiFS(1,1,1,1,0,0,0,0)
     a2 = FermiFS(1,1,1,0,1,0,0,0)
-
-    sv      = DVec(a1 => 1.0 + 0.5im; style=IsDeterministic{ComplexF64}())              
-    sv_prev = DVec(a1 => 0.4 - 0.1im, a2 => 0.2 + 0.3im; style=IsDeterministic{ComplexF64}())
-    sv_stag = DVec(a2 => 1.2 - 0.4im; style=IsDeterministic{ComplexF64}())               
-
-    union_state = LeapfrogComplexSingleState(
-        sv, sv_prev, sv_stag, zerovector(sv), working_memory(sv), "", Ref(1.0)
-    )
-
-    a1 = FermiFS(1,1,1,1,0,0,0,0)
-    a2 = FermiFS(1,1,1,0,1,0,0,0)
     a3 = FermiFS(1,1,0,1,1,0,0,0)
 
     sv      = DVec(a1 => 1.0 + 0.5im, a2 => -0.3 + 0.2im; style=IsDeterministic{ComplexF64}())
@@ -131,8 +120,8 @@ end
         sv, sv_prev, sv_stag, zerovector(sv), working_memory(sv), "", Ref(1.0)
     )
 
-    c_bar_partial   = DVec(a2 => 0.15 - 0.4im)
-    c_tilde_partial = DVec(a2 => 1.2 + 0.15im)
+    c_bar_partial   = DVec(a1 => 0.7 + 0.0im,  a2 => 0.15 - 0.4im)
+    c_tilde_partial = DVec(a1 => 0.0 + 0.2im,  a2 => 1.2 + 0.15im)
     expected_partial = dot(c_bar_partial, SignCorrelator(), c_tilde_partial)
 
     res_partial = Rimu.post_step_action(InternalCoherence(), partial_state, 1)
