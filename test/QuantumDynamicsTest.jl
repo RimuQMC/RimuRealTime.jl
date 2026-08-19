@@ -259,6 +259,7 @@ end
     v = DVec(address => 1.0 + 0.5im; style=IsDeterministic{ComplexF64}())
     h_v = hamiltonian * v - shift * v
 
+    # Default (Euler)
     problem = QuantumDynamicsProblem(
     	hamiltonian;
     	shift,
@@ -276,6 +277,39 @@ end
     @test s_state.state_vector_previous ≈ v
     @test s_state.state_staggered ≈ expected_staggered
     @test s_state.state_vector ≈ expected_vector
+
+    # Runge-Kutta initialization
+    problem_rk = QuantumDynamicsProblem(
+    	hamiltonian;
+    	shift,
+    	time_step,
+    	last_step=1,
+    	start_at=v,
+    	evolution_strategy=LeapfrogComplex(initialization=:runge_kutta)
+    )
+    sim_rk = solve(problem_rk)
+    @test sim_rk.success == true
+    s_state_rk = sim_rk.state[1]
+    h2_v = hamiltonian * h_v - shift * h_v
+    init_staggered_rk = v + im * (time_step / 2) * h_v - ((time_step / 2)^2 / 2) * h2_v
+    expected_staggered_rk = init_staggered_rk - im * time_step * h_v
+    expected_vector_rk = v - im * time_step * (hamiltonian * expected_staggered_rk - shift * expected_staggered_rk)
+    @test s_state_rk.state_vector_previous ≈ v
+    @test s_state_rk.state_staggered ≈ expected_staggered_rk
+    @test s_state_rk.state_vector ≈ expected_vector_rk
+
+    # Exact initialization
+    problem_exact = QuantumDynamicsProblem(
+    	hamiltonian;
+    	shift,
+    	time_step,
+    	last_step=1,
+    	start_at=v,
+    	evolution_strategy=LeapfrogComplex(initialization=:exact)
+    )
+    sim_exact = solve(problem_exact)
+    @test sim_exact.success == true
+    @test sim_exact.state[1].state_vector_previous ≈ v
 end
     
 @testset "LeapfrogComplexDynamicScaling" begin

@@ -29,6 +29,40 @@ using Test
     @test Leapfrog_complex_state.state_vector_previous ≈ v_leapfrog_complex + im * 0.01 * h_v_leapfrog_complex
     @test Leapfrog_complex_state.state_staggered ≈ v_leapfrog_complex + im * 0.01 / 2 * h_v_leapfrog_complex
 
+    # Test LeapfrogComplex constructors
+    @test LeapfrogComplex().initialization == :euler
+    @test LeapfrogComplex(:euler).initialization == :euler
+    @test LeapfrogComplex(:runge_kutta).initialization == :runge_kutta
+    @test LeapfrogComplex(initialization=:exact).initialization == :exact
+    @test LeapfrogComplex(RungeKutta()).initialization isa RungeKutta
+    @test LeapfrogComplex(ExactEvolution()).initialization isa ExactEvolution
+
+    # Test LeapfrogComplex RK initialization
+    h2_v_leapfrog_complex = hamiltonian * h_v_leapfrog_complex - shift * h_v_leapfrog_complex
+    dt = 0.01
+    Leapfrog_complex_rk = LeapfrogComplexSingleState(v_leapfrog_complex, working_memory(v_leapfrog_complex), "", hamiltonian, shift, dt; initialization=:runge_kutta)
+    @test Leapfrog_complex_rk.state_staggered ≈ v_leapfrog_complex + im * (dt / 2) * h_v_leapfrog_complex - ((dt / 2)^2 / 2) * h2_v_leapfrog_complex
+    @test Leapfrog_complex_rk.state_vector_previous ≈ v_leapfrog_complex + im * dt * h_v_leapfrog_complex - (dt^2 / 2) * h2_v_leapfrog_complex
+
+    # Test LeapfrogComplex exact initialization
+    Leapfrog_complex_exact = LeapfrogComplexSingleState(v_leapfrog_complex, working_memory(v_leapfrog_complex), "", hamiltonian, shift, dt; initialization=:exact)
+    wm_ref_exact = Ref(working_memory(v_leapfrog_complex))
+    function h_act_exact(x)
+        y = zerovector(x)
+        _, _, new_wm, y = apply_operator!(NoCompression(), wm_ref_exact[], y, x, hamiltonian - shift * I)
+        wm_ref_exact[] = new_wm
+        return y
+    end
+    exp_staggered_exact, _ = RimuRealTime.exponentiate(h_act_exact, im * dt / 2, v_leapfrog_complex)
+    exp_prev_exact, _ = RimuRealTime.exponentiate(h_act_exact, im * dt, v_leapfrog_complex)
+    @test isapprox(Leapfrog_complex_exact.state_staggered, exp_staggered_exact; atol=1e-12)
+    @test isapprox(Leapfrog_complex_exact.state_vector_previous, exp_prev_exact; atol=1e-12)
+
+    # Test LeapfrogComplex error handling
+    @test_throws ArgumentError LeapfrogComplexSingleState(v_leapfrog_complex, working_memory(v_leapfrog_complex), "", hamiltonian, shift, dt; initialization=:invalid)
+    v_stoch_c = DVec(address => 1.0 + 0.0im; style=IsDynamicSemistochastic{ComplexF64}())
+    @test_throws ArgumentError LeapfrogComplexSingleState(v_stoch_c, working_memory(v_stoch_c), "", hamiltonian, shift, dt; initialization=:exact)
+
     v_stochastic = DVec(address => 1.0; style=IsDynamicSemistochastic())
     PEC_state = PECSingleState(v, working_memory(v), "", hamiltonian, shift)
     @test PEC_state.state_vector == v

@@ -203,7 +203,7 @@ end
 
 
 """
-    LeapfrogComplex() <: EvolutionStrategy
+    LeapfrogComplex(; initialization=:euler) <: EvolutionStrategy
 
 [`EvolutionStrategy`](@ref) for evolution with a complex-valued staggered-state
 Leapfrog scheme. Pass `LeapfrogComplex()` to [`QuantumDynamicsProblem`](@ref)
@@ -220,7 +220,8 @@ At each step, the staggered state and integer-time state are advanced according 
 At each step of the calculation, three state vectors at different times are available to
 facilitate the calculation of the Visscher norm (see
 [`Norm2LeapfrogComplexProjector`](@ref)). Given a starting vector ``𝐕``, the
-initialisation of the missing time points is performed using Euler steps:
+initialisation of the missing time points can be chosen via `initialization`:
+- `:euler` (default): First-order Euler steps:
 ```math
 \\begin{aligned}
 𝐂₀ &= 𝐕\\\\
@@ -228,15 +229,20 @@ initialisation of the missing time points is performed using Euler steps:
 𝐂₋₁ &= 𝐂₀ + i dt(𝐇-S) 𝐂₀.
 \\end{aligned}
 ```
+- `:runge_kutta`: Second-order Runge-Kutta steps using ``(𝐇-S)`` and ``(𝐇-S)^2``.
+- `:exact`: Exact matrix exponentiation via Krylov subspace approximation.
+
 The only supported `time_step_strategy` is [`Rimu.ConstantTimeStep`](@extref).
 
 See also [`Leapfrog`](@ref), [`LeapfrogComplexSingleState`](@ref), and
 [`Norm2LeapfrogComplexProjector`](@ref).
 """
-struct LeapfrogComplex <: EvolutionStrategy end
+Base.@kwdef struct LeapfrogComplex{I} <: EvolutionStrategy
+    initialization::I = :euler
+end
 
 """
-    LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step) <: QDSingleState
+    LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step; initialization=:euler) <: QDSingleState
 
 Struct holding the complex state, its staggered state, and scratch storage
 required by [`LeapfrogComplex`](@ref) time evolution.
@@ -245,8 +251,8 @@ The input `v` must be a complex-valued `AbstractDVec`. `state_vector` stores the
 state on the integer time grid, and `state_vector_previous` retains the state
 from the preceding integer time step. `state_staggered` stores the state at
 the preceding half-step time point. `state_staggered` and `state_vector_previous`
-are both initialized with Euler estimates from the initial state, and are
-updated once per step.
+are initialized from the initial state using the specified `initialization` strategy
+(`:euler`, `:runge_kutta`, or `:exact`), and are updated once per step.
 
 See also [`LeapfrogComplex`](@ref), [`QDReplicaState`](@ref), and
 [`QuantumDynamicsProblem`](@ref).
@@ -268,26 +274,97 @@ function LeapfrogComplexSingleState(
     id,
     hamiltonian,
     shift,
-    time_step
+    time_step;
+    initialization = :euler
 ) where {K, T<:Real}
     state_vector = copy(v) # 𝐂(0), current complex vector
-
-    # scratch_vector = (𝐇 - S) * state_vector.
     scratch_vector = zerovector(state_vector)
     working_mem = wm isa PDWorkingMemory ? wm : working_memory(state_vector)
-    _, _, working_mem, scratch_vector = apply_operator!(
-        NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian - shift *I
-    )
 
-    # Initialize 𝐂₋½ = [1 + i dt / 2 (𝐇-S)] 𝐂₀ with a half-step Euler estimate.
-    state_staggered = copy(state_vector)
-    add!(state_staggered, scratch_vector, +im * time_step / 2)
-    compress!(state_staggered)
+    if initialization in (:euler, :Euler, "euler") || initialization isa Euler || initialization === Euler
+        # Initialize 𝐂₋½ and 𝐂₋₁ with Euler estimates.
+        _, _, working_mem, scratch_vector = apply_operator!(
+            NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian - shift * I
+        )
 
-    # Initialize 𝐂₋₁ = [1 + i dt (𝐇-S)] 𝐂₀ with a full-step Euler estimate.
-    state_vector_previous = copy(state_vector)
-    add!(state_vector_previous, scratch_vector, +im * time_step)
-    compress!(state_vector_previous)
+        state_staggered = copy(state_vector)
+        add!(state_staggered, scratch_vector, +im * time_step / 2)
+        compress!(state_staggered)
+
+        state_vector_previous = copy(state_vector)
+        add!(state_vector_previous, scratch_vector, +im * time_step)
+        compress!(state_vector_previous)
+
+    elseif initialization in (:runge_kutta, :rungekutta, :rk, :rk2, :RungeKutta, "runge_kutta", "rk") ||
+           initialization isa RungeKutta || initialization === RungeKutta
+        damping = initialization isa RungeKutta ? initialization.damping : 0.0
+
+        # scratch_vector = (𝐇 - S) * 𝐂₀
+        _, _, working_mem, scratch_vector = apply_operator!(
+            NoCompression(), working_mem, scratch_vector, state_vector, hamiltonian - shift * I
+        )
+
+        # scratch2 = (𝐇 - S)² * 𝐂₀
+        scratch2 = zerovector(state_vector)
+        _, _, working_mem, scratch2 = apply_operator!(
+            NoCompression(), working_mem, scratch2, scratch_vector, hamiltonian - shift * I
+        )
+
+        # 𝐂₋½ = [1 + i dt/2 (𝐇-S) - (1+d) (dt/2)² / 2 (𝐇-S)²] 𝐂₀
+        state_staggered = copy(state_vector)
+        add!(state_staggered, scratch_vector, +im * time_step / 2)
+        add!(state_staggered, scratch2, -(1 + damping) * (time_step / 2)^2 / 2)
+        compress!(state_staggered)
+
+        # 𝐂₋₁ = [1 + i dt (𝐇-S) - (1+d) dt² / 2 (𝐇-S)²] 𝐂₀
+        state_vector_previous = copy(state_vector)
+        add!(state_vector_previous, scratch_vector, +im * time_step)
+        add!(state_vector_previous, scratch2, -(1 + damping) * time_step^2 / 2)
+        compress!(state_vector_previous)
+
+    elseif initialization in (:exact, :Exact, "exact") ||
+           initialization isa ExactEvolution || initialization === ExactEvolution
+        if !(StochasticStyle(v) isa Rimu.StochasticStyles.IsDeterministic)
+            throw(ArgumentError(
+                "Exact initialization in LeapfrogComplex requires a deterministic stochastic style, but got " *
+                "$(typeof(StochasticStyle(v))). Pass `style = IsDeterministic()` to " *
+                "`QuantumDynamicsProblem`, or provide a `start_at` AbstractDVec that already " *
+                "has a deterministic style."
+            ))
+        end
+
+        exact_params = initialization isa ExactEvolution ? initialization : ExactEvolution()
+        @unpack krylovdim, tol, maxiter, eager, verbosity = exact_params
+
+        wm_ref = Ref(working_mem)
+        function hamiltonian_action(x)
+            y = zerovector(x)
+            _, _, new_wm, y = apply_operator!(NoCompression(), wm_ref[], y, x, hamiltonian - shift * I)
+            wm_ref[] = new_wm
+            return y
+        end
+
+        # 𝐂₋½ = exp(+i dt / 2 (𝐇 - S)) 𝐂₀
+        state_staggered, _ = exponentiate(
+            hamiltonian_action, +im * time_step / 2, state_vector;
+            krylovdim, tol=tol, maxiter, ishermitian=ishermitian(hamiltonian), eager, verbosity,
+        )
+        compress!(state_staggered)
+
+        # 𝐂₋₁ = exp(+i dt (𝐇 - S)) 𝐂₀
+        state_vector_previous, _ = exponentiate(
+            hamiltonian_action, +im * time_step, state_vector;
+            krylovdim, tol=tol, maxiter, ishermitian=ishermitian(hamiltonian), eager, verbosity,
+        )
+        compress!(state_vector_previous)
+
+        working_mem = wm_ref[]
+
+    else
+        throw(ArgumentError(
+            "Unknown initialization method: $(initialization). Choose from :euler, :runge_kutta, or :exact."
+        ))
+    end
 
     current_scale = 1.0
 
@@ -295,6 +372,18 @@ function LeapfrogComplexSingleState(
         state_vector, state_vector_previous, state_staggered,
         scratch_vector, working_mem, id, Ref(current_scale)
     )
+end
+
+function LeapfrogComplexSingleState(
+    v::AbstractDVec{K, Complex{T}},
+    wm,
+    id::String,
+    hamiltonian,
+    shift,
+    time_step,
+    initialization
+) where {K, T<:Real}
+    return LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step; initialization)
 end
  
 function advance!(
@@ -550,5 +639,5 @@ function create_single_state(
     shift,
     time_step
 )
-    return LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step)
+    return LeapfrogComplexSingleState(v, wm, id, hamiltonian, shift, time_step; initialization = es.initialization)
 end
