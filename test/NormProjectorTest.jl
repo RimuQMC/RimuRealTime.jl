@@ -80,3 +80,66 @@ end
     @test values[3].second ≈ sqrt(max(0.0, cross_real + staggered_imag))
     @test values[4].second ≈ sqrt(max(0.0, staggered_real + cross_imag))
 end
+
+@testset "InternalCoherence" begin
+    address = FermiFS(1,1,1,1,0,0,0,0)
+    hamiltonian = ExtendedHubbardReal1D(address; v=-2)
+    shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
+    time_step = 0.01
+    v = DVec(address => 1.0 + 0.5im; style=IsDeterministic{ComplexF64}())
+
+    state = LeapfrogComplexSingleState(
+        v, working_memory(v), "", hamiltonian, shift, time_step
+    )
+    copy!(state.state_vector_previous, v)
+    copy!(state.state_staggered, (2.0 - im) * v)
+
+    c_bar_expected = DVec(address => 1.0 + 0.0im)
+    c_tilde_expected = DVec(address => 2.5 + 0.5im)
+    expected_coherence = dot(c_bar_expected, SignCorrelator(), c_tilde_expected)
+
+    ic = InternalCoherence()
+    res = Rimu.post_step_action(ic, state, 1)
+    @test res[1].first == :internal_coherence
+    @test res[1].second ≈ expected_coherence
+
+    ic_custom = InternalCoherence(:custom_coherence)
+    res_custom = Rimu.post_step_action(ic_custom, state, 1)
+    @test res_custom[1].first == :custom_coherence
+    @test res_custom[1].second ≈ expected_coherence
+
+    a1 = FermiFS(1,1,1,1,0,0,0,0)
+    a2 = FermiFS(1,1,1,0,1,0,0,0)
+    a3 = FermiFS(1,1,0,1,1,0,0,0)
+
+    sv      = DVec(a1 => 1.0 + 0.5im, a2 => -0.3 + 0.2im; style=IsDeterministic{ComplexF64}())
+    sv_prev = DVec(a1 => 0.4 - 0.1im, a2 => 0.6 + 0.1im, a3 => 0.2 + 0.3im; style=IsDeterministic{ComplexF64}())
+    sv_stag = DVec(a2 => 1.2 - 0.4im, a3 => -0.5 + 0.7im; style=IsDeterministic{ComplexF64}())
+
+    partial_state = LeapfrogComplexSingleState(
+        sv, sv_prev, sv_stag, zerovector(sv), working_memory(sv), "", Ref(1.0)
+    )
+
+    c_bar_partial   = DVec(a1 => 0.7 + 0.0im,  a2 => 0.15 - 0.4im)
+    c_tilde_partial = DVec(a1 => 0.0 + 0.2im,  a2 => 1.2 + 0.15im)
+    expected_partial = dot(c_bar_partial, SignCorrelator(), c_tilde_partial)
+
+    res_partial = Rimu.post_step_action(InternalCoherence(), partial_state, 1)
+    @test res_partial[1].second ≈ expected_partial
+
+    problem = QuantumDynamicsProblem(
+        hamiltonian;
+        shift,
+        time_step=0.01,
+        last_step=10,
+        start_at=v,
+        evolution_strategy=LeapfrogComplex(),
+        post_step_strategy=InternalCoherence()
+    )
+    sim = solve(problem)
+    df = DataFrame(sim)
+    @test :internal_coherence in propertynames(df)
+    @test eltype(df.internal_coherence) == ComplexF64
+    @test length(df.internal_coherence) == 10
+end
+

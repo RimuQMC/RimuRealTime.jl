@@ -463,6 +463,83 @@ function Rimu.post_step_action(
     )
 end
 
+"""
+    InternalCoherence([name=:internal_coherence]) <: PostStepStrategy
+    InternalCoherence(; [name=:internal_coherence]) <: PostStepStrategy
+
+[`Rimu.PostStepStrategy`](@extref) to compute the internal coherence (sign correlation)
+between the two staggered states of the [`LeapfrogComplex`](@ref).
+
+At each step of the calculation three state vectors are available: the current
+integer-grid state ``𝐂ₙ``, the previous integer-grid state ``𝐂ₙ₋₁``, and the
+retained staggered state ``𝐂_{n-½}``. Writing ``𝐂ₖ = 𝐑ₖ + i 𝐈ₖ``, two
+reconstructed complex state vectors at the intermediate half-step time point
+``n - ½`` (time ``t - dt/2``) are formed:
+
+```math
+\\begin{aligned}
+\\bar{𝐂}_{n-½} &= \\frac{1}{2}(𝐑ₙ₋₁ + 𝐑ₙ) + i 𝐈_{n-½}\\\\
+\\tilde{𝐂}_{n-½} &= 𝐑_{n-½} + \\frac{i}{2}(𝐈ₙ₋₁ + 𝐈ₙ)
+\\end{aligned}
+```
+
+The internal coherence of ``\\bar{𝐂}_{n-½}`` and ``\\tilde{𝐂}_{n-½}`` is given by
+
+```math
+\\bar{𝐂}_{n-½} \\cdot \\hat{\\mathcal{S}} \\cdot \\tilde{𝐂}_{n-½}
+    = \\frac{1}{L} \\sum_k \\mathrm{sign}\\left( (\\bar{𝐂}_{n-½}[k])^* \\tilde{𝐂}_{n-½}[k] \\right),
+```
+
+where ``L`` is the number of non-zero terms in the sum.
+
+The result is reported under the key `name`, which defaults to `:internal_coherence`.
+
+Usage:
+```julia
+post_step_strategy = InternalCoherence()
+```
+or with a custom column name:
+```julia
+post_step_strategy = InternalCoherence(:my_coherence)
+```
+
+This strategy is specific to [`LeapfrogComplex`](@ref) time evolution.
+
+See also [`LeapfrogComplex`](@ref), [`Rimu.Hamiltonians.SignCorrelator`](@extref), 
+and [`Rimu.PostStepStrategy`](@extref).
+"""
+struct InternalCoherence <: PostStepStrategy
+    name::Symbol
+end
+
+InternalCoherence(; name::Symbol=:internal_coherence) = InternalCoherence(name)
+
+function Rimu.post_step_action(
+    ic::InternalCoherence,
+    s_state::LeapfrogComplexSingleState,
+    _
+)
+    @unpack state_vector, state_vector_previous, state_staggered = s_state
+
+    accumulator, nonzeros = sum(
+        pairs(state_vector);
+        init=Rimu.MultiScalar(zero(ComplexF64), 0)
+    ) do ((k, curr))
+    
+        stag, prev = state_staggered[k], state_vector_previous[k]
+
+        # C̄_{n-½}[k] = ½(𝐑ₙ₋₁[k] + 𝐑ₙ[k]) + i 𝐈_{n-½}[k]
+        c_bar_k = Complex(0.5 * (real(prev) + real(curr)), imag(stag))
+        # C̃_{n-½}[k] = 𝐑_{n-½}[k] + ½ i (𝐈ₙ₋₁[k] + 𝐈ₙ[k])
+        c_tilde_k = Complex(real(stag), 0.5 * (imag(prev) + imag(curr)))
+        product = ComplexF64(sign(conj(c_bar_k) * c_tilde_k))
+        Rimu.MultiScalar(product, Int(!iszero(product)))
+    end
+
+    coherence = iszero(nonzeros) ? zero(ComplexF64) : accumulator / nonzeros
+    return (ic.name => coherence,)
+end
+
 function create_single_state(
     es::LeapfrogComplex,
     algorithm,

@@ -18,6 +18,7 @@ NthOrderTimeEvolution
 ExponentialSampler
 Norm2LeapfrogProjector
 Norm2LeapfrogComplexProjector
+InternalCoherence
 ```
 
 ## Index
