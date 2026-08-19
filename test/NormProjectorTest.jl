@@ -119,12 +119,24 @@ end
         sv, sv_prev, sv_stag, zerovector(sv), working_memory(sv), "", Ref(1.0)
     )
 
-    c_bar_union = DVec(a1 => 0.7 + 0.0im, a2 => 0.1 - 0.4im)
-    c_tilde_union = DVec(a1 => 0.0 + 0.2im, a2 => 1.2 + 0.15im)
-    expected_union = dot(c_bar_union, SignCorrelator(), c_tilde_union)
+    a1 = FermiFS(1,1,1,1,0,0,0,0)
+    a2 = FermiFS(1,1,1,0,1,0,0,0)
+    a3 = FermiFS(1,1,0,1,1,0,0,0)
 
-    res_union = Rimu.post_step_action(InternalCoherence(), union_state, 1)
-    @test res_union[1].second ≈ expected_union
+    sv      = DVec(a1 => 1.0 + 0.5im, a2 => -0.3 + 0.2im; style=IsDeterministic{ComplexF64}())
+    sv_prev = DVec(a1 => 0.4 - 0.1im, a2 => 0.6 + 0.1im, a3 => 0.2 + 0.3im; style=IsDeterministic{ComplexF64}())
+    sv_stag = DVec(a2 => 1.2 - 0.4im, a3 => -0.5 + 0.7im; style=IsDeterministic{ComplexF64}())
+
+    partial_state = LeapfrogComplexSingleState(
+        sv, sv_prev, sv_stag, zerovector(sv), working_memory(sv), "", Ref(1.0)
+    )
+
+    c_bar_partial   = DVec(a2 => 0.15 - 0.4im)
+    c_tilde_partial = DVec(a2 => 1.2 + 0.15im)
+    expected_partial = dot(c_bar_partial, SignCorrelator(), c_tilde_partial)
+
+    res_partial = Rimu.post_step_action(InternalCoherence(), partial_state, 1)
+    @test res_partial[1].second ≈ expected_partial
 
     problem = QuantumDynamicsProblem(
         hamiltonian;

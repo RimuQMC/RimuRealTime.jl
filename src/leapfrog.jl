@@ -512,23 +512,21 @@ function Rimu.post_step_action(
     _
 )
     @unpack state_vector, state_vector_previous, state_staggered = s_state
-    ks = union(keys(state_staggered), keys(state_vector), keys(state_vector_previous))
-    c_bar = zerovector(state_staggered)   # C̄_{n-½}
-    c_tilde = zerovector(state_staggered) # C̃_{n-½}
+    ks = intersect(keys(state_staggered), keys(state_vector), keys(state_vector_previous))
 
-    for k in ks
+    accumulator, nonzeros = sum(ks; init=Rimu.MultiScalar(zero(ComplexF64), 0)) do k
         stag, curr, prev = state_staggered[k], state_vector[k], state_vector_previous[k]
 
         # C̄_{n-½}[k] = ½(𝐑ₙ₋₁[k] + 𝐑ₙ[k]) + i 𝐈_{n-½}[k]
-        c_bar_k   = Complex(0.5 * (real(prev) + real(curr)), imag(stag))
+        c_bar_k = Complex(0.5 * (real(prev) + real(curr)), imag(stag))
         # C̃_{n-½}[k] = 𝐑_{n-½}[k] + ½ i (𝐈ₙ₋₁[k] + 𝐈ₙ[k])
         c_tilde_k = Complex(real(stag), 0.5 * (imag(prev) + imag(curr)))
-
-        iszero(c_bar_k)   || (c_bar[k] = c_bar_k)
-        iszero(c_tilde_k) || (c_tilde[k] = c_tilde_k)
+        product = ComplexF64(sign(conj(c_bar_k) * c_tilde_k))
+        Rimu.MultiScalar(product, Int(!iszero(product)))
     end
-    # Internal coherence C̄_{n-½} ⋅ Ŝ ⋅ C̃_{n-½}
-    return (ic.name => dot(c_bar, SignCorrelator(), c_tilde),)
+
+    coherence = iszero(nonzeros) ? zero(ComplexF64) : accumulator / nonzeros
+    return (ic.name => coherence,)
 end
 
 function create_single_state(
