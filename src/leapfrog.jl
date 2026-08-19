@@ -521,8 +521,11 @@ function Rimu.post_step_action(
 )
     @unpack state_vector, state_vector_previous, state_staggered = s_state
 
-    accumulator, nonzeros = sum(pairs(state_vector);
-        init=Rimu.MultiScalar(zero(ComplexF64), 0)) do ((k, curr))
+    accumulator, nonzeros = sum(
+        pairs(state_vector);
+        init=Rimu.MultiScalar(zero(ComplexF64), 0)
+    ) do ((k, curr))
+    
         stag, prev = state_staggered[k], state_vector_previous[k]
 
         # C̄_{n-½}[k] = ½(𝐑ₙ₋₁[k] + 𝐑ₙ[k]) + i 𝐈_{n-½}[k]

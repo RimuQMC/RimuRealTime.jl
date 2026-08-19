@@ -22,9 +22,8 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     refine_reporting_strategy, replica_stats, report!, report_after_step!,
     report_default_metadata!, metadata!, reporting_interval, scale!,
     starting_address, un_finalize!, walkernumber_and_length, working_memory, zerovector,
-    zerovector!, SignCorrelator,
-    num_components, num_particles, num_modes, num_modes_are_equal, num_modes_check_equal,
-    maximum_mode_occupation
+    zerovector!, num_components, num_particles, num_modes, num_modes_are_equal,
+    num_modes_check_equal, maximum_mode_occupation
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
 using StaticArrays: StaticArrays
