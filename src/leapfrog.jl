@@ -483,6 +483,15 @@ reconstructed complex state vectors at the intermediate half-step time point
 \\end{aligned}
 ```
 
+The internal coherence of ``\\bar{𝐂}_{n-½}`` and ``\\tilde{𝐂}_{n-½}`` is given by
+
+```math
+\\bar{𝐂}_{n-½} \\cdot \\hat{\\mathcal{S}} \\cdot \\tilde{𝐂}_{n-½}
+    = \\frac{1}{L} \\sum_k \\mathrm{sign}\\left( (\\bar{𝐂}_{n-½}[k])^* \\tilde{𝐂}_{n-½}[k] \\right),
+```
+
+where ``L`` is the number of non-zero terms in the sum.
+
 The result is reported under the key `name`, which defaults to `:internal_coherence`.
 
 Usage:
