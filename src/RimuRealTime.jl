@@ -11,7 +11,7 @@ using KrylovKit: exponentiate
 using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown,
     AdjointUnknown, AllOverlaps, CompressionStrategy, ConstantTimeStep, DVec, Hamiltonians,
-    HamiltonianSum, IdentityOperator, InitiatorRule, IsDiagonal, IsDynamicSemistochastic,
+    HamiltonianSum, IdentityOperator, Initiator, InitiatorRule, IsDiagonal, IsDynamicSemistochastic,
     IsHermitian, NoCompression, NonInitiator, NoStats, PDWorkingMemory, PostStepStrategy,
     ReplicaStrategy, Report, ReportDFAndInfo, ReportingStrategy, StochasticStyle,
     TimeStepStrategy, add!, allows_address_type, apply_operator!, compress!,

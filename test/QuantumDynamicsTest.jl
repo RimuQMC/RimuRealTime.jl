@@ -203,6 +203,13 @@ using Test
     )
     @test num_overlaps(problem_all_overlaps) == 3
     @test num_overlaps(problem_without_seed) == 0
+
+    problem_initiator_true = QuantumDynamicsProblem(hamiltonian; initiator=true)
+    @test problem_initiator_true.initiator isa Initiator
+    problem_initiator_false = QuantumDynamicsProblem(hamiltonian; initiator=false)
+    @test problem_initiator_false.initiator isa NonInitiator
+    problem_initiator_custom = QuantumDynamicsProblem(hamiltonian; initiator=Initiator(3))
+    @test problem_initiator_custom.initiator == Initiator(3)
 end
 
 @testset "LeapfrogDynamicScaling" begin
