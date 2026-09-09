@@ -21,6 +21,7 @@ RKSingleState
 PECSingleState
 ProductSingleState
 ExactSingleState
+GPAnsatz
 TimeStepParameters
 advance!
 component_dot_products

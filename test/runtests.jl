@@ -44,3 +44,7 @@ end
 @safetestset "QDSimulation Test" begin
     include("QDSimulationTest.jl")
 end
+
+@safetestset "Gross-Pitaevskii Ansatz Test" begin
+    include("GPTest.jl")
+end

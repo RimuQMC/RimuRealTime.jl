@@ -23,8 +23,9 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     report_default_metadata!, metadata!, reporting_interval, scale!,
     starting_address, un_finalize!, walkernumber_and_length, working_memory, zerovector,
     zerovector!, num_components, num_particles, num_modes, num_modes_are_equal,
-    num_modes_check_equal, maximum_mode_occupation
+    num_modes_check_equal, maximum_mode_occupation, build_basis, occupied_modes, SingleComponentFockAddress
 using Rimu.Hamiltonians: ModifiedHamiltonian
+using Gutzwiller: Gutzwiller, AbstractAnsatz
 using Setfield: Setfield, @set
 using StaticArrays: StaticArrays
 
@@ -54,6 +55,7 @@ include("pec.jl")
 include("runge_kutta.jl")
 include("euler.jl")
 include("product.jl")
+include("gp_product_state.jl")
 
 export FirstOrderTimeEvolution, NthOrderTimeEvolution, ExponentialSampler
 export Clock, ClockAddress, ClockOperator, ClockObservable, clock_projector
@@ -63,5 +65,6 @@ export EvolutionStrategy, ExactEvolution, Leapfrog, LeapfrogComplex, PEC, RungeK
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 export Norm2LeapfrogProjector, Norm2LeapfrogComplexProjector, InternalCoherence
+export GPAnsatz
 
 end
