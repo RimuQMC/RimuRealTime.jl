@@ -34,7 +34,7 @@ SafeTestsets = "0.1"
 Setfield = "1.1.2"
 StaticArrays = "1.9.18"
 julia = "1.10"
-Gutzwiller = "0.1"
+Gutzwiller = "0.1.0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
