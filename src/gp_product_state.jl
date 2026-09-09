@@ -58,6 +58,3 @@ function (gpe::GPAnsatz)(addr, params)
     # return coefficient sqrt(N! / prod(n_m!)) * prod(c_m^n_m)
     return sqrt(gpe.N_fact * Gutzwiller.multinomial_weight(addr)) * orb_prod
 end
-
-(a::GPAnsatz)(addr, params, _) = a(addr, params)
-Base.getindex(a::GPAnsatz, addr, params) = a(addr, params)

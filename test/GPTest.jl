@@ -20,12 +20,10 @@ using Test
     # Argument error for multi-component address
     @test_throws ArgumentError GPAnsatz(FermiFS2C((1, 0), (0, 1)))
 
-    # For indexing
+    # Amplitude evaluation
     c = [0.6, 0.8]
     val = ansatz(addr, c)
     @test val ≈ sqrt(factorial(3) / (factorial(2) * factorial(1))) * (0.6^2) * 0.8
-    @test ansatz[addr, c] == val
-    @test ansatz(addr, c, nothing) == val
 
     # Zero parameter branch
     @test iszero(ansatz(BoseFS(2, 1), [0.6, 0.0]))
