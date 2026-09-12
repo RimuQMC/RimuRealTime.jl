@@ -6,10 +6,10 @@ using OrderedCollections: OrderedCollections, LittleDict
 using Parameters: Parameters, @pack!, @unpack
 using ProgressLogging: ProgressLogging, @logprogress, @withprogress
 using Random: RandomDevice
-using LinearAlgebra: I, ishermitian
+using LinearAlgebra: I, ishermitian, isdiag
 using KrylovKit: exponentiate
-using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
-    AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown,
+using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian, DictVectors,
+    AbstractObservable, AbstractOperator, AbstractOperatorColumn, AdjointKnown, dot_from_right,
     AdjointUnknown, AllOverlaps, CompressionStrategy, ConstantTimeStep, DVec, Hamiltonians,
     HamiltonianSum, IdentityOperator, Initiator, InitiatorRule, IsDiagonal, IsDynamicSemistochastic,
     IsHermitian, NoCompression, NonInitiator, NoStats, PDWorkingMemory, PostStepStrategy,
@@ -26,7 +26,7 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian,
     num_modes_check_equal, maximum_mode_occupation
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
-using StaticArrays: StaticArrays
+using StaticArrays: StaticArrays, SMatrix, SVector
 
 
 
@@ -63,5 +63,6 @@ export EvolutionStrategy, ExactEvolution, Leapfrog, LeapfrogComplex, PEC, RungeK
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 export Norm2LeapfrogProjector, Norm2LeapfrogComplexProjector, InternalCoherence
+export FullOverlaps, full_overlaps
 
 end
