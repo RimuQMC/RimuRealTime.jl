@@ -7,7 +7,7 @@ using Test
     address = FermiFS(1,1,1,1,0,0,0,0)
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
-    replica_strategy = AllOverlaps(2)
+    replica_strategy = FullOverlaps(2; operator=hamiltonian, name="full_overlap")
     evolution_strategy = (PEC(), RungeKutta())
     start_at = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
 
@@ -33,6 +33,13 @@ using Test
 
     sim = solve(problem)
     @test sim.success == true
+    @test num_overlaps(problem) == 3
+    @test size(sim.df.full_overlap[end]) == (2, 2)
+    @test size(sim.df.Op1[end]) == (2, 2)
+
+    @test FullOverlaps(2; vecnorm=false) isa NoStats
+    @test_throws ArgumentError FullOverlaps(2.0)
+    @test_throws ArgumentError FullOverlaps(2; operator=(1, 2))
 
     single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
     problem2 = QuantumDynamicsProblem(
