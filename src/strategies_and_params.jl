@@ -124,3 +124,130 @@ function update_time_step!(::ConstantTimeStep, time_step_parameters, walkers)
     @pack! time_step_parameters = time, prev_walkers
     return (; time)
 end
+
+"""
+    FullOverlaps(n_replicas=2; operator=nothing, vecnorm=true,
+        mixed_spectral_overlaps=false, name="overlap") <: ReplicaStrategy{n_replicas}
+
+Compute replica overlaps and report each set as an `n_replicas × n_replicas` matrix. Rows
+label the left vectors and columns label the right vectors, so diagonal norms and both
+orders of every replica pair are retained. This differs from [`Rimu.AllOverlaps`](@extref),
+which reports the individual off-diagonal overlaps separately.
+
+`operator` may be one observable or a tuple or vector of observables. Set `vecnorm=false`
+to omit vector-vector overlaps, and `mixed_spectral_overlaps=true` to also compare distinct
+spectral states. For one spectral state the vector-overlap column is named `name`; with
+multiple states, columns are prefixed by their spectral-state indices. Operator columns use
+`Op1`, `Op2`, and so on.
+
+For a detailed description also read [`Rimu.AllOverlaps`](@extref).
+See also [`Rimu.ReplicaStrategy`](@extref).
+"""
+struct FullOverlaps{N,M,O,B,S} <: ReplicaStrategy{N}
+    operators::O
+    name::String
+end
+
+const TupleOrVector = Union{Tuple, Vector}
+
+function FullOverlaps(
+    n_replicas=2;
+    operator=nothing,
+    vecnorm=true,
+    mixed_spectral_overlaps=false,
+    name="overlap"
+)
+    n_replicas isa Integer || throw(ArgumentError("n_replicas must be an integer"))
+    if isnothing(operator)
+        operators = ()
+    elseif operator isa TupleOrVector
+        eltype(operator) <: AbstractObservable || throw(ArgumentError(
+            "operator must be an AbstractObservable or a Tuple or Vector of AbstractObservables"
+        ))
+        operators = operator
+    else
+        operators = (operator,)
+    end
+
+    !vecnorm && isempty(operators) && return NoStats(n_replicas)
+    return FullOverlaps{
+        n_replicas,length(operators),typeof(operators),vecnorm,mixed_spectral_overlaps
+    }(operators, string(name))
+end
+
+function Rimu.replica_stats(
+    rs::FullOverlaps{N,<:Any,<:Any,B,S}, spectral_states::Tuple{Vararg{Any,N}}
+) where {N,B,S}
+    n_spectral = Rimu.num_spectral_states(spectral_states[1])
+    vecs = SMatrix{N,n_spectral}(
+        spectral_states[i][j].v for i in 1:N, j in 1:n_spectral
+    )
+    wms = SMatrix{N,n_spectral}(
+        spectral_states[i][j].wm for i in 1:N, j in 1:n_spectral
+    )
+    return full_overlaps(rs.operators, vecs, wms, Val(B), Val(S); name=rs.name)
+end
+
+"""
+    full_overlaps(operators, vectors, working_memories, vecnorm=true,
+        mixed_spectral_overlaps=false; name="overlap")
+
+Return names and `Matrix` values containing all replica overlaps. `vecnorm` controls
+vector-vector matrices, while `mixed_spectral_overlaps` controls matrices between distinct
+spectral states.
+"""
+function full_overlaps(
+    operators::TupleOrVector, vecs::SMatrix{N,M,<:AbstractDVec}, wms,
+    ::Val{B}, ::Val{S}; name::String="overlap"
+) where {N,M,B,S}
+    T = promote_type((valtype(v) for v in vecs)..., eltype.(operators)...)
+    names, values = String[], Matrix{T}[]
+    diagonal = all(isdiag, operators)
+    for k in 1:M
+        local_vecs = SVector{N}(
+            diagonal ? vecs[i, k] : DictVectors.copy_to_local!(wms[i, k], vecs[i, k])
+            for i in 1:N
+        )
+        if S
+            for l in k+1:M
+                if B
+                    push!(names, "s$(k)_s$(l)_$(name)")
+                    push!(values, T[dot(vecs[i, k], vecs[j, l]) for i in 1:N, j in 1:N])
+                end
+                for (m, op) in enumerate(operators)
+                    push!(names, "s$(k)_s$(l)_Op$(m)")
+                    push!(values, T[
+                        dot_from_right(local_vecs[i], op, vecs[j, l])
+                        for i in 1:N, j in 1:N
+                    ])
+                end
+            end
+        end
+        if B
+            push!(names, M == 1 ? name : "s$(k)_$(name)")
+            push!(values, T[
+                i == j ? norm(vecs[i, k], 2)^2 : dot(vecs[i, k], vecs[j, k])
+                for i in 1:N, j in 1:N
+            ])
+        end
+        for (m, op) in enumerate(operators)
+            push!(names, M == 1 ? "Op$(m)" : "s$(k)_Op$(m)")
+            push!(values, T[
+                dot_from_right(local_vecs[i], op, vecs[j, k])
+                for i in 1:N, j in 1:N
+            ])
+        end
+    end
+    return Tuple(names), Tuple(values)
+end
+
+function Rimu.undo_transforms(
+    strat::FullOverlaps{N,M,<:Any,B,S}, ham::AbstractHamiltonian
+) where {N,M,B,S}
+    operators = map(op -> Rimu.undo_transform(ham, op), strat.operators)
+    identity = Rimu.undo_transform(ham, IdentityOperator())
+    if identity ≢ IdentityOperator()
+        operators = (operators..., identity)
+    end
+    return FullOverlaps{N,M,typeof(operators),B,S}(operators, strat.name)
+end

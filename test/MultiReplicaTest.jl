@@ -1,13 +1,16 @@
 using Rimu
 using RimuRealTime
 using RimuRealTime: RKSingleState, PECSingleState
+using StaticArrays: SMatrix
 using Test
 
 @testset "MultiReplicaAlgorithm" begin
     address = FermiFS(1,1,1,1,0,0,0,0)
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
-    replica_strategy = AllOverlaps(2)
+    replica_strategy = FullOverlaps(
+        2; operator=(hamiltonian,), mixed_spectral_overlaps=true, name="full_overlap"
+    )
     evolution_strategy = (PEC(), RungeKutta())
     start_at = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
 
@@ -33,6 +36,34 @@ using Test
 
     sim = solve(problem)
     @test sim.success == true
+    @test num_overlaps(problem) == 3
+    @test size(sim.df.full_overlap[end]) == (2, 2)
+    @test size(sim.df.Op1[end]) == (2, 2)
+
+    vecs = SMatrix{2,2}(sim.state[i].v for i in 1:2, _ in 1:2)
+    wms = SMatrix{2,2}(sim.state[i].wm for i in 1:2, _ in 1:2)
+    names, overlaps = full_overlaps(
+        (hamiltonian,), vecs, wms, Val(true), Val(true); name="full_overlap"
+    )
+    @test names == (
+        "s1_s2_full_overlap", "s1_s2_Op1", "s1_full_overlap", "s1_Op1",
+        "s2_full_overlap", "s2_Op1",
+    )
+    @test all(size(overlap) == (2, 2) for overlap in overlaps)
+
+    restored_strategy = Rimu.undo_transforms(replica_strategy, hamiltonian)
+    @test restored_strategy.operators == replica_strategy.operators
+    @test restored_strategy.name == replica_strategy.name
+
+    transformed_strategy = Rimu.undo_transforms(
+        replica_strategy, GutzwillerSampling(hamiltonian; g=0.1)
+    )
+    @test length(transformed_strategy.operators) == 2
+    @test transformed_strategy.name == replica_strategy.name
+
+    @test FullOverlaps(2; vecnorm=false) isa NoStats
+    @test_throws ArgumentError FullOverlaps(2.0)
+    @test_throws ArgumentError FullOverlaps(2; operator=(1, 2))
 
     single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
     problem2 = QuantumDynamicsProblem(

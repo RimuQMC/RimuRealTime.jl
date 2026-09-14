@@ -3,9 +3,10 @@
 [`EvolutionStrategy`](@ref) for evolution using a Krylov subspace exponentiation method.
 Pass `ExactEvolution()` to [`QuantumDynamicsProblem`](@ref) with the keyword
 `evolution_strategy` to enable this algorithm.
-The state is updated every time step according to ``v_{n+1} = e^{-i H dt} v_n``,
-where the matrix exponential is computed via a Krylov subspace approximation using
-[`KrylovKit.exponentiate`](@extref). This method applies the matrix exponential once per time step.
+The state is updated every time step according to ``v_{n+1} = e^{-i (H - S) dt} v_n``,
+where ``S`` is the energy shift. The matrix exponential is computed via a 
+Krylov subspace approximation using [`KrylovKit.exponentiate`](@extref). 
+This method applies the matrix exponential once per time step.
 
 # Keyword arguments
 
@@ -36,7 +37,7 @@ Rimu.default_style(::ExactEvolution) = Rimu.StochasticStyles.IsDeterministic{Com
 """
     ExactSingleState(v, working_memory, id, algorithm) <: QDSingleState
 Struct holding the state vector and scratch arrays required for [`ExactEvolution`](@ref)
-time evolution. The state ``v_n`` is advanced each step via ``v_{n+1} = e^{-i H dt} v_n`` using a Krylov
+time evolution. The state ``v_n`` is advanced each step via ``v_{n+1} = e^{-i (H - S) dt} v_n`` using a Krylov
 subspace approximation configured by `algorithm`.
 
 See [`ExactEvolution`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
@@ -72,30 +73,32 @@ end
 
 """
     advance!(report, state::QDReplicaState, s_state::ExactSingleState, ::DiscretizedEvolution)
-Advance the state `s_state` by one step via ``v_{n+1} = e^{-i H dt} v_n`` using a
+Advance the state `s_state` by one step via ``v_{n+1} = e^{-i (H - S) dt} v_n`` 
+where ``S`` is the energy shift, using a
 Krylov subspace approximation, and write data to the `report`.
 """
 function advance!(report, state::QDReplicaState, s_state::ExactSingleState, _)
     
     @unpack state_vector, working_mem, id, algorithm = s_state
     @unpack krylovdim, tol, maxiter, eager, verbosity = algorithm
-    @unpack time_step_parameters, hamiltonian, reporting_strategy = state
+    @unpack time_step_parameters, hamiltonian, reporting_strategy, shift = state
     @unpack time_step = time_step_parameters
     step = state.step[]
 
     # define the Hamiltonian action as a closure that preserves working memory
     wm = Ref(working_mem)
+    shifted_hamiltonian = hamiltonian - shift * I
     function hamiltonian_action(x)
         y = zerovector(x)
-        _, _, new_wm, y = apply_operator!(NoCompression(), wm[], y, x, hamiltonian)
+        _, _, new_wm, y = apply_operator!(NoCompression(), wm[], y, x, shifted_hamiltonian)
         wm[] = new_wm
         return y
     end
 
-    # exponentiate: v_{n+1} = exp(-i * H * dt) * v_n
+    # exponentiate: v_{n+1} = exp(-i * (H - S) * dt) * v_n
     state_vector, info = exponentiate(
         hamiltonian_action, -im * time_step, state_vector;
-        krylovdim, tol=tol, maxiter, ishermitian=ishermitian(hamiltonian), eager, verbosity,
+        krylovdim, tol=tol, maxiter, ishermitian=ishermitian(shifted_hamiltonian), eager, verbosity,
     )
     working_mem = wm[]
 
