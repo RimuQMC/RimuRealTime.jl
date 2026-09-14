@@ -170,9 +170,12 @@ using Test
     time_step,
     last_step=1,
     initial_walkers=1,
-    evolution_strategy=ExactEvolution()
+    evolution_strategy=ExactEvolution(),
+    shift=0.5+0.1im
     )
     @test problem_default_style.style isa IsDeterministic{ComplexF64}
+    result = solve(problem_default_style)
+    @test result.state[1].state_vector ≈ exp(im * (0.5+0.1im) * time_step) * sim1.state[1].state_vector atol=1e-9
 
     shown = sprint(show, problem_default_style)
     @test occursin("QuantumDynamicsProblem with 1 replica(s):", shown)
