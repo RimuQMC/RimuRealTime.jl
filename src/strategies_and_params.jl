@@ -207,13 +207,19 @@ function full_overlaps(
     local_vecs = SVector{N}(
         diagonal ? vecs[i] : DictVectors.copy_to_local!(wms[i], vecs[i])
         for i in 1:N
-    )
+        )
     if B
+        overlaps = Matrix{T}(undef, N, N)
+        for i in 1:N
+            overlaps[i, i] = norm(vecs[i], 2)^2
+            for j in (i + 1):N
+                overlap = dot(vecs[i], vecs[j])
+                overlaps[i, j] = overlap
+                overlaps[j, i] = conj(overlap)
+            end
+        end
         push!(names, name)
-        push!(values, T[
-            i == j ? norm(vecs[i], 2)^2 : dot(vecs[i], vecs[j])
-            for i in 1:N, j in 1:N
-        ])
+        push!(values, overlaps)
     end
     for (m, op) in enumerate(operators)
         push!(names, "Op$(m)")
