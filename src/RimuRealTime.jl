@@ -26,7 +26,7 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian, DictVe
     num_modes_check_equal, maximum_mode_occupation
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
-using StaticArrays: StaticArrays, SMatrix, SVector
+using StaticArrays: StaticArrays, SVector
 
 
 

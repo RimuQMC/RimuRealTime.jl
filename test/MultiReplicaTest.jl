@@ -1,7 +1,7 @@
 using Rimu
 using RimuRealTime
 using RimuRealTime: RKSingleState, PECSingleState
-using StaticArrays: SMatrix
+using StaticArrays: SVector
 using Test
 
 @testset "MultiReplicaAlgorithm" begin
@@ -9,7 +9,7 @@ using Test
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
     replica_strategy = FullOverlaps(
-        2; operator=(hamiltonian,), mixed_spectral_overlaps=true, name="full_overlap"
+        2; operator=(hamiltonian,), name="full_overlap"
     )
     evolution_strategy = (PEC(), RungeKutta())
     start_at = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
@@ -40,15 +40,12 @@ using Test
     @test size(sim.df.full_overlap[end]) == (2, 2)
     @test size(sim.df.Op1[end]) == (2, 2)
 
-    vecs = SMatrix{2,2}(sim.state[i].v for i in 1:2, _ in 1:2)
-    wms = SMatrix{2,2}(sim.state[i].wm for i in 1:2, _ in 1:2)
+    vecs = SVector{2}(sim.state[i].v for i in 1:2)
+    wms = SVector{2}(sim.state[i].wm for i in 1:2)
     names, overlaps = full_overlaps(
-        (hamiltonian,), vecs, wms, Val(true), Val(true); name="full_overlap"
+        (hamiltonian,), vecs, wms, Val(true); name="full_overlap"
     )
-    @test names == (
-        "s1_s2_full_overlap", "s1_s2_Op1", "s1_full_overlap", "s1_Op1",
-        "s2_full_overlap", "s2_Op1",
-    )
+    @test names == ("full_overlap", "Op1")
     @test all(size(overlap) == (2, 2) for overlap in overlaps)
 
     restored_strategy = Rimu.undo_transforms(replica_strategy, hamiltonian)
