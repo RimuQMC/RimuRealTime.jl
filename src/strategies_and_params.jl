@@ -88,7 +88,7 @@ end
 """
     WalkerControl(update_strength) <: TimeStepStrategy
 Update the phase angle of the time step to control the walker number. The time step is
-``dt \\exp(-iα)``, where ``α`` is updated according to 
+``dt \\exp(-iα)``, where ``α`` is updated according to
 
 ```math
 α_{n+1} = α_{n} + D \\arctan\\left(\\frac{N_\\mathrm{w}^{n+1}}{N_\\mathrm{w}^n}\\right),
@@ -127,9 +127,9 @@ end
 
 """
     FullOverlaps(
-        n_replicas=2; 
-        operator=nothing, 
-        vecnorm=true, 
+        n_replicas=2;
+        operator=nothing,
+        vecnorm=true,
         name="overlap"
     ) <: ReplicaStrategy{n_replicas}
 
@@ -145,7 +145,7 @@ use `Op1`, `Op2`, and so on.
 For a detailed description also read [`Rimu.AllOverlaps`](@extref).
 See also [`Rimu.ReplicaStrategy`](@extref).
 """
-struct FullOverlaps{N,O,B} <: ReplicaStrategy{N}
+struct FullOverlaps{N,O,VECNORM} <: ReplicaStrategy{N}
     operators::O
     name::String
 end
@@ -175,11 +175,32 @@ function FullOverlaps(
 end
 
 function Rimu.replica_stats(
-    rs::FullOverlaps{N,<:Any,B}, states::Tuple{Vararg{Any,N}}
-) where {N,B}
+    rs::FullOverlaps{N,<:Any,VECNORM}, states::Tuple{Vararg{Any,N}}
+) where {N,VECNORM}
     vecs = SVector{N}(states[i].v for i in 1:N)
     wms = SVector{N}(states[i].wm for i in 1:N)
-    return full_overlaps(rs.operators, vecs, wms, Val(B); name=rs.name)
+    return full_overlaps(rs.operators, vecs, wms, Val(VECNORM); name=rs.name)
+end
+
+function Rimu.ProjectorMonteCarloProblem{N,S}(
+    ::Rimu.PMCAlgorithm,
+    ::AbstractHamiltonian,
+    _,
+    ::StochasticStyle,
+    ::InitiatorRule,
+    ::Bool,
+    ::Rimu.SimulationPlan,
+    ::FullOverlaps{N},
+    _,
+    ::ReportingStrategy,
+    ::Tuple,
+    ::Rimu.SpectralStrategy{S},
+    ::Int,
+    ::Rimu.LittleDict{String,String},
+    ::Union{Nothing,UInt64},
+    ::Int
+) where {N,S}
+    throw(ArgumentError("`FullOverlaps` are not supported for `ProjectorMonteCarloProblem`."))
 end
 
 """
@@ -198,9 +219,9 @@ function full_overlaps(
     operators::TupleOrVector,
     vecs::SVector{N,<:AbstractDVec},
     wms,
-    ::Val{B};
+    ::Val{VECNORM};
     name::String="overlap"
-) where {N,B}
+) where {N,VECNORM}
     T = promote_type((valtype(v) for v in vecs)..., eltype.(operators)...)
     names, values = String[], Matrix{T}[]
     diagonal = all(isdiag, operators)
@@ -208,7 +229,7 @@ function full_overlaps(
         diagonal ? vecs[i] : DictVectors.copy_to_local!(wms[i], vecs[i])
         for i in 1:N
         )
-    if B
+    if VECNORM
         overlaps = Matrix{T}(undef, N, N)
         for i in 1:N
             overlaps[i, i] = norm(vecs[i], 2)^2
@@ -232,12 +253,12 @@ function full_overlaps(
 end
 
 function Rimu.undo_transforms(
-    strat::FullOverlaps{N,O,B}, ham::AbstractHamiltonian
-) where {N,O,B}
+    strat::FullOverlaps{N,O,VECNORM}, ham::AbstractHamiltonian
+) where {N,O,VECNORM}
     operators = map(op -> Rimu.undo_transform(ham, op), strat.operators)
     identity = Rimu.undo_transform(ham, IdentityOperator())
     if identity ≢ IdentityOperator()
         operators = (operators..., identity)
     end
-    return FullOverlaps{N,typeof(operators),B}(operators, strat.name)
+    return FullOverlaps{N,typeof(operators),VECNORM}(operators, strat.name)
 end
