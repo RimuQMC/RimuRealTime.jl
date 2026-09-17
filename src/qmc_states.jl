@@ -70,6 +70,27 @@ Rimu.num_overlaps(::QDReplicaState{<:Any,<:Any,<:NoStats}) = 0
 Rimu.num_overlaps(::QDReplicaState{N,<:Any,<:AllOverlaps{N,<:Any,<:Any,B}}) where {N,B} = B*N*(N-1)÷2
 Rimu.num_overlaps(::QDReplicaState{N,<:Any,<:FullOverlaps{N,<:Any,B}}) where {N,B} = B*N*(N+1)÷2
 
+function Rimu.ProjectorMonteCarloProblem{N,S}(
+    ::Rimu.PMCAlgorithm,
+    ::AbstractHamiltonian,
+    _,
+    ::StochasticStyle,
+    ::InitiatorRule,
+    ::Bool,
+    ::Rimu.SimulationPlan,
+    ::FullOverlaps{N},
+    _,
+    ::ReportingStrategy,
+    ::Tuple,
+    ::Rimu.SpectralStrategy{S},
+    ::Int,
+    ::Rimu.LittleDict{String,String},
+    ::Union{Nothing,UInt64},
+    ::Int
+) where {N,S}
+    throw(ArgumentError("`FullOverlaps` are not supported for `ProjectorMonteCarloProblem`."))
+end
+
 Base.size(r::QDReplicaState) = (num_replicas(r),)
 Base.getindex(r::QDReplicaState, i::Int) = r.single_states[i]
 
