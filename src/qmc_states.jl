@@ -5,9 +5,11 @@ Abstract type for single states for use with different [`EvolutionStrategy`](@re
 
 ## Concrete types:
 * [`LeapfrogSingleState`](@ref)
+* [`LeapfrogComplexSingleState`](@ref)
 * [`PECSingleState`](@ref)
 * [`RKSingleState`](@ref)
 * [`EulerSingleState`](@ref)
+* [`ExactSingleState`](@ref)
 * [`ProductSingleState`](@ref)
 """
 abstract type QDSingleState end
@@ -68,6 +70,7 @@ end
 Rimu.num_replicas(::QDReplicaState{N}) where {N} = N
 Rimu.num_overlaps(::QDReplicaState{<:Any,<:Any,<:NoStats}) = 0
 Rimu.num_overlaps(::QDReplicaState{N,<:Any,<:AllOverlaps{N,<:Any,<:Any,B}}) where {N,B} = B*N*(N-1)÷2
+Rimu.num_overlaps(::QDReplicaState{N,<:Any,<:FullOverlaps{N,<:Any,B}}) where {N,B} = B*N*(N+1)÷2
 
 Base.size(r::QDReplicaState) = (num_replicas(r),)
 Base.getindex(r::QDReplicaState, i::Int) = r.single_states[i]

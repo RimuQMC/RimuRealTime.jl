@@ -1,13 +1,16 @@
 using Rimu
 using RimuRealTime
-using RimuRealTime: RKSingleState, PECSingleState
+using RimuRealTime: RKSingleState, PECSingleState, full_overlaps, WalkerControl
+using StaticArrays: SVector
 using Test
 
 @testset "MultiReplicaAlgorithm" begin
     address = FermiFS(1,1,1,1,0,0,0,0)
     hamiltonian = ExtendedHubbardReal1D(address; v=-2)
     shift = solve(ExactDiagonalizationProblem(hamiltonian)).values[1]
-    replica_strategy = AllOverlaps(2)
+    replica_strategy = FullOverlaps(
+        2; operator=(hamiltonian,), name="full_overlap"
+    )
     evolution_strategy = (PEC(), RungeKutta())
     start_at = DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}())
 
@@ -33,6 +36,37 @@ using Test
 
     sim = solve(problem)
     @test sim.success == true
+    @test num_overlaps(problem) == 3
+    @test size(sim.df.full_overlap[end]) == (2, 2)
+    @test size(sim.df.Op1[end]) == (2, 2)
+
+    vecs = SVector{2}(sim.state[i].v for i in 1:2)
+    wms = SVector{2}(sim.state[i].wm for i in 1:2)
+    names, overlaps = full_overlaps(
+        (hamiltonian,), vecs, wms, Val(true); name="full_overlap"
+    )
+    @test names == ("full_overlap", "Op1")
+    @test all(size(overlap) == (2, 2) for overlap in overlaps)
+    @test full_overlaps((hamiltonian,), vecs, wms, Val(false))[1] == ("Op1",)
+    @test full_overlaps((), vecs, wms, Val(true))[1] == ("overlap",)
+
+    restored_strategy = Rimu.undo_transforms(replica_strategy, hamiltonian)
+    @test restored_strategy.operators == replica_strategy.operators
+    @test restored_strategy.name == replica_strategy.name
+
+    transformed_strategy = Rimu.undo_transforms(
+        replica_strategy, GutzwillerSampling(hamiltonian; g=0.1)
+    )
+    @test length(transformed_strategy.operators) == 2
+    @test transformed_strategy.name == replica_strategy.name
+
+    @test FullOverlaps(2; vecnorm=false) isa NoStats
+    @test FullOverlaps(2).operators == ()
+    @test FullOverlaps(2; operator=hamiltonian).operators == (hamiltonian,)
+    @test FullOverlaps(2; operator=[hamiltonian]).operators == [hamiltonian]
+    @test_throws ArgumentError FullOverlaps(2.0)
+    @test_throws ArgumentError FullOverlaps(2; operator=(1, 2))
+    @test_throws ArgumentError ProjectorMonteCarloProblem(hamiltonian; replica_strategy=FullOverlaps(2))
 
     single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
     problem2 = QuantumDynamicsProblem(
@@ -90,6 +124,7 @@ using Test
     )
     sim_tsp = solve(problem_tsp)
     @test sim_tsp.state.time_step_parameters.time_step == 0.05
+    @test RimuRealTime.update_time_step!(WalkerControl(-1.0), tsp, 100.0).alpha == 0.0
 end
 
 @testset "MultiReplicaStyle" begin

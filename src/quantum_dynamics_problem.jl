@@ -264,6 +264,8 @@ Rimu.num_replicas(::QuantumDynamicsProblem{N}) where {N} = N
 function Rimu.num_overlaps(p::QuantumDynamicsProblem{N}) where {N}
     if p.replica_strategy isa AllOverlaps{N,<:Any,<:Any,true}
         return N*(N-1)÷2
+    elseif p.replica_strategy isa FullOverlaps{N,<:Any,true}
+        return N*(N+1)÷2
     else
         return 0
     end

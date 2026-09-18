@@ -26,6 +26,7 @@ makedocs(;
             "Clock Hamiltonian" => "clock.md",
             "Population Control" => "population.md",
         ],
+        "Internals" => "internal.md",
         "API"   => "api.md",
     ],
     plugins = [links, CodeBlocks()]

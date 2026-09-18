@@ -10,18 +10,5 @@ CurrentModule = RimuRealTime
 ```
 
 ```@docs
-QDAlgorithm
-DiscretizedEvolution
-QDReplicaState
-QDSingleState
-LeapfrogSingleState
-LeapfrogComplexSingleState
-EulerSingleState
-RKSingleState
-PECSingleState
-ProductSingleState
-ExactSingleState
-TimeStepParameters
-advance!
-component_dot_products
+FullOverlaps
 ```
