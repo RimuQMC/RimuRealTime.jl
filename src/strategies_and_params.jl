@@ -243,11 +243,17 @@ function full_overlaps(
         push!(values, overlaps)
     end
     for (m, op) in enumerate(operators)
+        overlaps = Matrix{T}(undef, N, N)
+        for i in 1:N
+            overlaps[i, i] = dot_from_right(local_vecs[i], op, vecs[i])
+            for j in (i + 1):N
+                overlap = dot_from_right(local_vecs[i], op, vecs[j])
+                overlaps[i, j] = overlap
+                overlaps[j, i] = conj(overlap)
+            end
+        end
         push!(names, "Op$(m)")
-        push!(values, T[
-            dot_from_right(local_vecs[i], op, vecs[j])
-            for i in 1:N, j in 1:N
-        ])
+        push!(values, overlaps)
     end
     return Tuple(names), Tuple(values)
 end

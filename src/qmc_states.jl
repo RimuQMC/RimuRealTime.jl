@@ -5,9 +5,11 @@ Abstract type for single states for use with different [`EvolutionStrategy`](@re
 
 ## Concrete types:
 * [`LeapfrogSingleState`](@ref)
+* [`LeapfrogComplexSingleState`](@ref)
 * [`PECSingleState`](@ref)
 * [`RKSingleState`](@ref)
 * [`EulerSingleState`](@ref)
+* [`ExactSingleState`](@ref)
 * [`ProductSingleState`](@ref)
 """
 abstract type QDSingleState end

@@ -63,6 +63,6 @@ export EvolutionStrategy, ExactEvolution, Leapfrog, LeapfrogComplex, PEC, RungeK
 export ScalingStrategy, NoScaling, ConstantScaling, DynamicScaling
 export init, step!, solve, solve!
 export Norm2LeapfrogProjector, Norm2LeapfrogComplexProjector, InternalCoherence
-export FullOverlaps, full_overlaps
+export FullOverlaps
 
 end

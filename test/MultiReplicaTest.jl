@@ -1,6 +1,6 @@
 using Rimu
 using RimuRealTime
-using RimuRealTime: RKSingleState, PECSingleState
+using RimuRealTime: RKSingleState, PECSingleState, full_overlaps, WalkerControl
 using StaticArrays: SVector
 using Test
 
@@ -47,6 +47,8 @@ using Test
     )
     @test names == ("full_overlap", "Op1")
     @test all(size(overlap) == (2, 2) for overlap in overlaps)
+    @test full_overlaps((hamiltonian,), vecs, wms, Val(false))[1] == ("Op1",)
+    @test full_overlaps((), vecs, wms, Val(true))[1] == ("overlap",)
 
     restored_strategy = Rimu.undo_transforms(replica_strategy, hamiltonian)
     @test restored_strategy.operators == replica_strategy.operators
@@ -59,8 +61,12 @@ using Test
     @test transformed_strategy.name == replica_strategy.name
 
     @test FullOverlaps(2; vecnorm=false) isa NoStats
+    @test FullOverlaps(2).operators == ()
+    @test FullOverlaps(2; operator=hamiltonian).operators == (hamiltonian,)
+    @test FullOverlaps(2; operator=[hamiltonian]).operators == [hamiltonian]
     @test_throws ArgumentError FullOverlaps(2.0)
     @test_throws ArgumentError FullOverlaps(2; operator=(1, 2))
+    @test_throws ArgumentError ProjectorMonteCarloProblem(hamiltonian; replica_strategy=FullOverlaps(2))
 
     single_algorithm = DiscretizedEvolution(; time_step_strategy=ConstantTimeStep(), evolution_strategy=Euler(), scaling_strategy=NoScaling())
     problem2 = QuantumDynamicsProblem(
@@ -118,6 +124,7 @@ using Test
     )
     sim_tsp = solve(problem_tsp)
     @test sim_tsp.state.time_step_parameters.time_step == 0.05
+    @test RimuRealTime.update_time_step!(WalkerControl(-1.0), tsp, 100.0).alpha == 0.0
 end
 
 @testset "MultiReplicaStyle" begin
