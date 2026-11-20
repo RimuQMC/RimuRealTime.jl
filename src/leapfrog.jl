@@ -1,5 +1,5 @@
 """
-    Leapfrog() <: EvolutionStrategy
+    Leapfrog(; joint_rounding=false) <: EvolutionStrategy
 
 [`EvolutionStrategy`](@ref) for evolution using a second-order Leapfrog algorithm.
 Pass `Leapfrog()` to [`QuantumDynamicsProblem`](@ref) with the keyword
@@ -26,12 +26,18 @@ parts are initialised as:
 ```
 Only [`Rimu.ConstantTimeStep`](@extref) is supported.
 
+# Keyword argument
+- `joint_rounding::Bool=false`: If `true`, ``𝐑_{n+1}`` and ``𝐈_{n+1½}`` are compressed
+  together as the complex vector ``𝐑 + i𝐈``, instead of as two separate vectors
+
 See also [`Norm2LeapfrogProjector`](@ref), [`LeapfrogSingleState`](@ref).
 """
-struct Leapfrog <: EvolutionStrategy end
+Base.@kwdef struct Leapfrog <: EvolutionStrategy
+    joint_rounding::Bool = false
+end
 
 """
-    LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step) <: QDSingleState
+    LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step, joint_rounding=false) <: QDSingleState
 
 Struct holding the state vectors and scratch arrays required for [`Leapfrog`](@ref) time
 evolution. The input `v` must be a complex-valued `AbstractDVec`; its real and imaginary
@@ -43,7 +49,8 @@ The staggered imaginary parts are initialised from the general complex initial s
 ```math
 𝐈_{\\pm ½} = 𝐈_0 \\mp \\frac{dt}{2}(𝐇-S)𝐑_0
 ```
-The bracketing pair ``(𝐈_{n+½},\\, 𝐈_{n-½})`` is retained at each step.
+The bracketing pair ``(𝐈_{n+½},\\, 𝐈_{n-½})`` is retained at each step. If
+`joint_rounding` is `true`, ``𝐑`` and ``𝐈_{n+½}`` are compressed jointly.
 
 See [`Leapfrog`](@ref), [`QDReplicaState`](@ref), [`QuantumDynamicsProblem`](@ref).
 """
@@ -56,10 +63,14 @@ struct LeapfrogSingleState{CV, V, W} <: QDSingleState
     h_imag::V # scratch vector: dt.(H-S).I
     working_mem::W
     id::String
+    joint_rounding::Bool # compress R(t) and I(t+1/2dt) jointly as R + i.I
     current_scale::Ref{Float64}
 end
 
-function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian, shift, time_step) where {K, T<:Real}
+function LeapfrogSingleState(
+    v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian, shift, time_step,
+        joint_rounding::Bool = false
+    ) where {K, T<:Real}
     state_real = copy(v) # R_0 = Re(Psi_0)
 
     # Compute (H-S).R_0 for the use in the staggered initialisation
@@ -87,7 +98,7 @@ function LeapfrogSingleState(v::AbstractDVec{K, Complex{T}}, wm, id, hamiltonian
     return LeapfrogSingleState(
         state_vector, state_real,
         state_imag_staggered, state_imag_staggered_previous,
-        h_real, h_imag, working_mem_r, id, Ref(current_scale)
+        h_real, h_imag, working_mem_r, id, joint_rounding, Ref(current_scale)
     )
 end
 
@@ -95,7 +106,7 @@ end
 function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, algorithm::DiscretizedEvolution)
     
     @unpack state_vector, state_real, state_imag_staggered, state_imag_staggered_previous,
-        h_real, h_imag, working_mem, id, current_scale = s_state
+        h_real, h_imag, working_mem, id, joint_rounding, current_scale = s_state
     @unpack time_step_parameters, shift, hamiltonian, reporting_strategy = state
     @unpack time_step = time_step_parameters
     @unpack scaling_strategy = algorithm
@@ -143,8 +154,21 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, a
     
     comp_name = CompressionStrategy(state_vector) isa NoCompression ? () : (:len_before_compression,)
     comp_stat = compress!(state_vector)
-    compress!(state_real)
-    compress!(state_imag_staggered)
+    if joint_rounding
+        # Compress R(t+dt) + i.I(t+3dt/2) jointly as a complex vector
+        add!(state_real, state_imag_staggered, im)
+        compress!(state_real)
+        # Split back: I = Im(R + i.I), then R = (R + i.I) - i.I
+        zerovector!(state_imag_staggered)
+        for (key, value) in pairs(localpart(state_real))
+            state_imag_staggered[key] = imag(value)
+        end
+        add!(state_real, state_imag_staggered, -im)
+    else
+        # Compress R(t+dt) and I(t+3dt/2) separately
+        compress!(state_real)
+        compress!(state_imag_staggered)
+    end
     compress!(state_imag_staggered_previous)
     names = (step_stat_names..., comp_name..., scale_names...)
     stats = (step_stat_values..., comp_stat..., scale_stats...)
@@ -165,7 +189,7 @@ function advance!(report, state::QDReplicaState, s_state::LeapfrogSingleState, a
 end
 
 function create_single_state(es::Leapfrog, algorithm, v, wm, id, hamiltonian, shift, time_step)
-    return LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step)
+    return LeapfrogSingleState(v, wm, id, hamiltonian, shift, time_step, es.joint_rounding)
 end
 
 """

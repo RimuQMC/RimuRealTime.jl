@@ -23,7 +23,7 @@ using Rimu: Rimu, AbstractDVec, AbstractFockAddress, AbstractHamiltonian, DictVe
     report_default_metadata!, metadata!, reporting_interval, scale!,
     starting_address, un_finalize!, walkernumber_and_length, working_memory, zerovector,
     zerovector!, num_components, num_particles, num_modes, num_modes_are_equal,
-    num_modes_check_equal, maximum_mode_occupation
+    num_modes_check_equal, maximum_mode_occupation, localpart
 using Rimu.Hamiltonians: ModifiedHamiltonian
 using Setfield: Setfield, @set
 using StaticArrays: StaticArrays, SVector
