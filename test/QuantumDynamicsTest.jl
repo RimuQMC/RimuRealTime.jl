@@ -227,7 +227,7 @@ end
         time_step=0.01,
         last_step=10,
         start_at=DVec(address => 1.0+0.0im; style=IsDeterministic{ComplexF64}()),
-        evolution_strategy=Leapfrog(),
+        evolution_strategy=Leapfrog(joint_rounding=true),
         scaling_strategy=DynamicScaling(initial_walkers)
     )
     sim = solve(problem)
